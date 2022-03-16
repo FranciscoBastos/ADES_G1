@@ -4,6 +4,9 @@ library("rpart")
 library("neuralnet")
 library("dplyr")
 
+####################################HELPS#######################################
+# https://github.com/sed-inf-u-szeged/OpenStaticAnalyzer
+
 ################################Load data#######################################
 
 dataCSV <- read.csv("data/dev.csv")
