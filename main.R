@@ -3,6 +3,22 @@ library("corrplot")
 library("rpart")
 library("neuralnet")
 library("dplyr")
+library("ggpubr")
+library("corrplot")
+library("RColorBrewer")
+library("readxl")
+library("ggplot2")
+library("rpart")
+library("rpart.plot")
+library("neuralnet")
+
+install.packages('ISLR')
+library(ISLR)
+
+data(package="ISLR")
+carseats<-Carseats
+
+require(tree)
 
 ####################################HELPS#######################################
 # https://github.com/sed-inf-u-szeged/OpenStaticAnalyzer
@@ -19,24 +35,78 @@ tail(dataCSV)
 str(dataCSV)
 dim(dataCSV)
 
-set.seed(2987465)
 dataCSV <- na.omit(dataCSV)
 dataCSV <- as.numeric(dataCSV)
 
 dataCSV[sample.int(nrow(dataCSV), 1000), ]
 
+# Made this to turn the logical values of true and false to 1 and 0 respectively
+dataCSV$bugs <- as.integer(as.logical(dataCSV$bugs))
+
 ############################K-Means clustering algorithm########################
 # For more information, if there is an error go-to:
 # https://data-hacks.com/r-error-do_one-nmeth-na-nan-inf-foreign-function-call-arg-1
 ################################################################################
-# Create a vector for analysis with only the first 1000 columns of the data-set.
+# Create a vector for analysis with only the first 1000 lines of the data-set.
 # Also we removed the 1 to the 3 columns and the last - because they had 
-# non numerical values. 
-tem.dataCSV <- dataCSV[1:1000,-c(1:3,ncol(dataCSV))]
+# non numerical values.
+#tem.dataCSV <- dataCSV[1:1000,-c(1:3,ncol(dataCSV))]
+tem.dataCSV <- dataCSV[1:1000,-c(1:3)]
+tem.dataCSV$bugs
 
 # K-Means algorithm from the simplified data-set.
 kmeans(tem.dataCSV, centers=2)
 
+##############################Visualize our data################################
+# Inspired by the blog post:
+# https://towardsdatascience.com/how-to-create-a-correlation-matrix-with-too-many-variables-309cc0c0a57
+################################################################################
+
+corr_simple <- function(data=tem.dataCSV, sig=0.95){
+  # Convert data to numeric in order to run correlations
+  # Convert to factor first to keep the integrity of the data - 
+  # Each value will become a number rather than turn into NA
+  df_cor <- data %>% mutate_if(is.character, as.factor)
+  df_cor <- df_cor %>% mutate_if(is.factor, as.numeric)
+  
+  # Run a correlation and drop the insignificant ones
+  corr <- cor(df_cor)
+  
+  # Prepare to drop duplicates and correlations of 1
+  corr[lower.tri(corr,diag=TRUE)] <- NA 
+  # Drop perfect correlations
+  corr[corr == 1] <- NA 
+  
+  # Turn into a 3-column table
+  corr <- as.data.frame(as.table(corr))
+  # Remove the NA values from above 
+  corr <- na.omit(corr) 
+  
+  # Select significant values  
+  corr <- subset(corr, abs(Freq) > sig) 
+  
+  # Sort by highest correlation
+  corr <- corr[order(-abs(corr$Freq)),] 
+  # Print table
+  print(corr)
+  
+  # Turn corr back into matrix in order to plot with corrplot
+  mtx_corr <- reshape2::acast(corr, Var1~Var2, value.var="Freq")
+  
+  # Plot correlations visually
+  corrplot(mtx_corr, is.corr=FALSE, tl.col="black", na.label=" ")
+}
+
+corr_simple()
+
+#################################Divide our data################################
+set.seed(2987465)
+index <- sample(1:nrow(tem.dataCSV), as.integer(0.7*nrow(tem.dataCSV)))
+tem.dataCSV.train <- tem.dataCSV[index,]
+tem.dataCSV.test <- tem.dataCSV[-index,]
+
+dim(tem.dataCSV.train)
+dim(tem.dataCSV.test)
 
 
-
+ncol(dataCSV)
