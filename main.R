@@ -1,24 +1,15 @@
 library("psych")
-library("corrplot")
 library("rpart")
-library("neuralnet")
 library("dplyr")
 library("ggpubr")
 library("corrplot")
 library("RColorBrewer")
 library("readxl")
 library("ggplot2")
-library("rpart")
 library("rpart.plot")
 library("neuralnet")
-
-install.packages('ISLR')
-library(ISLR)
-
-data(package="ISLR")
-carseats<-Carseats
-
-require(tree)
+library("party")
+library("partykit")
 
 ####################################HELPS#######################################
 # https://github.com/sed-inf-u-szeged/OpenStaticAnalyzer
@@ -36,9 +27,8 @@ str(dataCSV)
 dim(dataCSV)
 
 dataCSV <- na.omit(dataCSV)
-dataCSV <- as.numeric(dataCSV)
 
-dataCSV[sample.int(nrow(dataCSV), 1000), ]
+# dataCSV[sample.int(nrow(dataCSV), 1000), ]
 
 # Made this to turn the logical values of true and false to 1 and 0 respectively
 dataCSV$bugs <- as.integer(as.logical(dataCSV$bugs))
@@ -50,8 +40,9 @@ dataCSV$bugs <- as.integer(as.logical(dataCSV$bugs))
 # Create a vector for analysis with only the first 1000 lines of the data-set.
 # Also we removed the 1 to the 3 columns and the last - because they had 
 # non numerical values.
-#tem.dataCSV <- dataCSV[1:1000,-c(1:3,ncol(dataCSV))]
-tem.dataCSV <- dataCSV[1:1000,-c(1:3)]
+# tem.dataCSV <- dataCSV[1:1000,-c(1:3,ncol(dataCSV))]
+# tem.dataCSV <- dataCSV[1:1000,-c(1:7)]
+tem.dataCSV <- dataCSV[-c(1:7)]
 tem.dataCSV$bugs
 
 # K-Means algorithm from the simplified data-set.
@@ -100,6 +91,7 @@ corr_simple <- function(data=tem.dataCSV, sig=0.95){
 corr_simple()
 
 #################################Divide our data################################
+
 set.seed(2987465)
 index <- sample(1:nrow(tem.dataCSV), as.integer(0.7*nrow(tem.dataCSV)))
 tem.dataCSV.train <- tem.dataCSV[index,]
@@ -108,5 +100,17 @@ tem.dataCSV.test <- tem.dataCSV[-index,]
 dim(tem.dataCSV.train)
 dim(tem.dataCSV.test)
 
+#################################Decision tree##################################
 
-ncol(dataCSV)
+png(file = "decision_tree.png")
+
+output.tree <- ctree(
+  bugs ~ ., 
+  data = tem.dataCSV.train)
+
+print(output.tree)
+
+plot(output.tree)
+
+dev.off()
+
