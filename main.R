@@ -44,7 +44,7 @@ tem.dataCSV <- dataCSV[1:25000,-c(1:7)]
 tem.dataCSV$bugs <- as.integer(as.logical(tem.dataCSV$bugs))
 
 # K-Means algorithm from the simplified data-set.
-kmeans.model <- kmeans(tem.dataCSV, centers=2)
+kmeans(tem.dataCSV, centers=2)
 
 ##############################Visualize our data################################
 # Inspired by the blog post:
@@ -158,6 +158,6 @@ sprintf("%f is the mean", mean)
 sprintf("%f is the standard deviation", sd)
 
 # Export data set to more or less kaggle format
-df.table_bug <- data.frame(table(predict.bug, tem.dataCSV.test$bugs))
-write.csv(df.table_bug, "submissions/decision_tree_pree_formated.csv", row.names = TRUE)
+# df.table_bug <- data.frame(table(predict.bug, tem.dataCSV.test$bugs))
+# write.csv(df.table_bug, "submissions/decision_tree_pree_formated.csv", row.names = TRUE)
 
