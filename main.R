@@ -115,6 +115,68 @@ plot(output.tree)
 dev.off()
 
 # Prediction
-predict_bug <- predict(output.tree, tem.dataCSV.test, type = 'prob')
-table_bug <- table(tem.dataCSV.test$bugs, predict_bug)
+predict.bug <- predict(output.tree, tem.dataCSV.test, type = 'prob')
+table_bug <- table(tem.dataCSV.test$bugs, predict.bug)
 table_bug
+
+# Confusion matrix 
+m.conf<-table(tem.dataCSV.test$bugs, predict.bug)
+
+print(m.conf)
+
+accuracy <- sum( diag(m.conf)) / sum (m.conf)
+
+print(accuracy)
+
+# Train the model with different samples to see if the accuracy changes
+set.seed(2987465)
+
+accuracy <- c()
+
+for (i in 1:10) {
+  index <- sample(1:nrow(tem.dataCSV), 0.7 * nrow(tem.dataCSV))
+  
+  data_train <- tem.dataCSV[index,]
+  data_test <- tem.dataCSV[-index,]
+  
+  rpart_model <- ctree(
+    bugs ~ ., 
+    data = tem.dataCSV.train)
+  
+  rpart_pred <- predict(rpart_model, data_test, type = "prob")
+  
+  m.conf <- table(data_test$bugs, rpart_pred)
+  
+  accuracy <- c(accuracy, sum( diag(m.conf)) / sum (m.conf))
+}
+
+mean <- mean(accuracy)
+sd <- sd(accuracy)
+
+sprintf("%f is the mean", mean)
+sprintf("%f is the standard deviation", sd)
+
+# Evaluation metrics
+
+modelEvaluation <- function(test, prediction) {
+  if(length(unique(test)) == length(unique(prediction))){
+    m.conf <- table(test, prediction)
+    
+    accuracy <- sum(diag(m.conf))/sum(m.conf)
+    precision <- m.conf[1, 1]/sum(m.conf[,1])
+    recall <- m.conf[1, 1]/sum(m.conf[1,])
+    f1 <- 2 * precision * recall / (precision - recall)
+    
+    return (
+      data.frame(
+        accuracy <- round(accuracy, digits = 3),
+        precision <- round(precision, digits = 3),
+        recall <- round(recall, digits = 3),
+        f1 <- round(f1, digits = 3)
+      )
+    )
+    
+  }
+}
+
+modelEvaluation(tem.dataCSV.test, predict.bug)
