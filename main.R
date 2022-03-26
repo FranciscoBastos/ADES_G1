@@ -28,11 +28,6 @@ dim(dataCSV)
 
 dataCSV <- na.omit(dataCSV)
 
-# dataCSV[sample.int(nrow(dataCSV), 1000), ]
-
-# Made this to turn the logical values of true and false to 1 and 0 respectively
-dataCSV$bugs <- as.integer(as.logical(dataCSV$bugs))
-
 ############################K-Means clustering algorithm########################
 # For more information, if there is an error go-to:
 # https://data-hacks.com/r-error-do_one-nmeth-na-nan-inf-foreign-function-call-arg-1
@@ -40,17 +35,23 @@ dataCSV$bugs <- as.integer(as.logical(dataCSV$bugs))
 # Create a vector for analysis with only the first 1000 lines of the data-set.
 # Also we removed the 1 to the 3 columns and the last - because they had 
 # non numerical values.
-# tem.dataCSV <- dataCSV[1:1000,-c(1:3,ncol(dataCSV))]
-# tem.dataCSV <- dataCSV[1:1000,-c(1:7)]
-tem.dataCSV <- dataCSV[-c(1:7)]
-tem.dataCSV$bugs
+#
+# Made this to turn the logical values of true and false to 1 and 0 respectively
+# Remove the last column as well: 
+# tem.dataCSV <- dataCSV[1:1000,-c(1:7,ncol(dataCSV))]
+tem.dataCSV <- dataCSV[1:25000,-c(1:7)]
+
+tem.dataCSV$bugs <- as.integer(as.logical(tem.dataCSV$bugs))
 
 # K-Means algorithm from the simplified data-set.
-kmeans(tem.dataCSV, centers=2)
+kmeans.model <- kmeans(tem.dataCSV, centers=2)
 
 ##############################Visualize our data################################
 # Inspired by the blog post:
 # https://towardsdatascience.com/how-to-create-a-correlation-matrix-with-too-many-variables-309cc0c0a57
+#
+# TODO Change this function to see what variables
+# have more correlation with bugs!!
 ################################################################################
 
 corr_simple <- function(data=tem.dataCSV, sig=0.95){
@@ -101,8 +102,8 @@ dim(tem.dataCSV.train)
 dim(tem.dataCSV.test)
 
 #################################Decision tree##################################
-
-png(file = "decision_tree.png")
+# dev.new(width=15,height=14,noRStudioGD = TRUE)
+png(file = "decision_tree.png", width = 4524, height = 900, units = "px")
 
 output.tree <- ctree(
   bugs ~ ., 
@@ -111,6 +112,9 @@ output.tree <- ctree(
 print(output.tree)
 
 plot(output.tree)
-
 dev.off()
 
+# Prediction
+predict_bug <- predict(output.tree, tem.dataCSV.test, type = 'prob')
+table_bug <- table(tem.dataCSV.test$bugs, predict_bug)
+table_bug
