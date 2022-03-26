@@ -115,7 +115,7 @@ plot(output.tree)
 dev.off()
 
 # Prediction
-predict.bug <- predict(output.tree, tem.dataCSV.test, type = 'prob')
+predict.bug <- predict(output.tree, tem.dataCSV.test, type = 'node')
 table_bug <- table(tem.dataCSV.test$bugs, predict.bug)
 table_bug
 
@@ -143,11 +143,12 @@ for (i in 1:10) {
     bugs ~ ., 
     data = tem.dataCSV.train)
   
-  rpart_pred <- predict(rpart_model, data_test, type = "prob")
+  rpart_pred <- predict(rpart_model, data_test, type = "node")
   
   m.conf <- table(data_test$bugs, rpart_pred)
   
   accuracy <- c(accuracy, sum( diag(m.conf)) / sum (m.conf))
+  
 }
 
 mean <- mean(accuracy)
@@ -156,27 +157,7 @@ sd <- sd(accuracy)
 sprintf("%f is the mean", mean)
 sprintf("%f is the standard deviation", sd)
 
-# Evaluation metrics
+# Export data set to more or less kaggle format
+df.table_bug <- data.frame(table(predict.bug, tem.dataCSV.test$bugs))
+write.csv(df.table_bug, "submissions/decision_tree_pree_formated.csv", row.names = TRUE)
 
-modelEvaluation <- function(test, prediction) {
-  if(length(unique(test)) == length(unique(prediction))){
-    m.conf <- table(test, prediction)
-    
-    accuracy <- sum(diag(m.conf))/sum(m.conf)
-    precision <- m.conf[1, 1]/sum(m.conf[,1])
-    recall <- m.conf[1, 1]/sum(m.conf[1,])
-    f1 <- 2 * precision * recall / (precision - recall)
-    
-    return (
-      data.frame(
-        accuracy <- round(accuracy, digits = 3),
-        precision <- round(precision, digits = 3),
-        recall <- round(recall, digits = 3),
-        f1 <- round(f1, digits = 3)
-      )
-    )
-    
-  }
-}
-
-modelEvaluation(tem.dataCSV.test, predict.bug)
