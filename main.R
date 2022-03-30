@@ -50,8 +50,6 @@ kmeans(tem.dataCSV, centers=2)
 # Inspired by the blog post:
 # https://towardsdatascience.com/how-to-create-a-correlation-matrix-with-too-many-variables-309cc0c0a57
 #
-# TODO Change this function to see what variables
-# have more correlation with bugs!!
 ################################################################################
 
 corr_simple <- function(data=tem.dataCSV, sig=0.95){
@@ -103,11 +101,15 @@ dim(tem.dataCSV.test)
 
 #################################Decision tree##################################
 # dev.new(width=15,height=14,noRStudioGD = TRUE)
-png(file = "decision_tree.png", width = 4524, height = 900, units = "px")
+png(file = "decision_tree.png")
+    # ,width = 4524,
+    # height = 900,
+    # units = "px")
 
-output.tree <- ctree(
+output.tree <- rpart(
   bugs ~ ., 
-  data = tem.dataCSV.train)
+  data = tem.dataCSV.train,
+  method = "class")
 
 print(output.tree)
 
@@ -115,12 +117,21 @@ plot(output.tree)
 dev.off()
 
 # Prediction
-predict.bug <- predict(output.tree, tem.dataCSV.test, type = 'node')
-table_bug <- table(tem.dataCSV.test$bugs, predict.bug)
+predict.bug <- predict(output.tree, tem.dataCSV.test, type = 'prob')
+predict.bug
+
+# Turn prediction data into a data.frame
+df.predict.bug <- data.frame(predict.bug)
+# Eliminate the first column because it is the classes that do not have bugs
+df.predict.bug <- df.predict.bug[,-c(1)]
+df.predict.bug
+
+# Display information as a table
+table_bug <- table(tem.dataCSV.test$bugs, df.predict.bug)
 table_bug
 
 # Confusion matrix 
-m.conf<-table(tem.dataCSV.test$bugs, predict.bug)
+m.conf<-table(tem.dataCSV.test$bugs, df.predict.bug)
 
 print(m.conf)
 
@@ -139,13 +150,19 @@ for (i in 1:10) {
   data_train <- tem.dataCSV[index,]
   data_test <- tem.dataCSV[-index,]
   
-  rpart_model <- ctree(
+  rpart_model <- rpart(
     bugs ~ ., 
-    data = tem.dataCSV.train)
+    data = tem.dataCSV.train,
+    method = "class")
   
-  rpart_pred <- predict(rpart_model, data_test, type = "node")
+  rpart_pred <- predict(rpart_model, data_test, type = "prob")
+  # Turn prediction data into a data.frame
+  df.rpart_pred <- data.frame(rpart_pred)
+  # Eliminate the first column because it is the classes that do not have bugs
+  df.rpart_pred <- df.rpart_pred[,-c(1)]
+  df.rpart_pred
   
-  m.conf <- table(data_test$bugs, rpart_pred)
+  m.conf <- table(data_test$bugs, df.rpart_pred)
   
   accuracy <- c(accuracy, sum( diag(m.conf)) / sum (m.conf))
   
@@ -157,7 +174,12 @@ sd <- sd(accuracy)
 sprintf("%f is the mean", mean)
 sprintf("%f is the standard deviation", sd)
 
-# Export data set to more or less kaggle format
-# df.table_bug <- data.frame(table(predict.bug, tem.dataCSV.test$bugs))
-# write.csv(df.table_bug, "submissions/decision_tree_pree_formated.csv", row.names = TRUE)
+# TODO TRAIN OUR MODEL WITH THE DATA FORM THE COMPETITION AND WRITE TO A CSV
+# 
+# TODO LEARN HOW TO USE THE COLLECT FUNCTION 
+# TO SELECT A CORRECT BETTER IMPUT DATA FRAME
 
+# Export data set to more or less kaggle format
+write.csv(df.predict.bug, "submissions/decision_tree_formated.csv",
+          row.names = TRUE,
+          col.names = TRUE)
