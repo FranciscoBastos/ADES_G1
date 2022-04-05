@@ -174,12 +174,62 @@ sd <- sd(accuracy)
 sprintf("%f is the mean", mean)
 sprintf("%f is the standard deviation", sd)
 
-# TODO TRAIN OUR MODEL WITH THE DATA FORM THE COMPETITION AND WRITE TO A CSV
+# ATENTION: YOU NEED TO USE THE COMPETION DATA, THE ALL DATASET.
+#           YOU CANNOT DEVIDE THE DATASET INTO TRAINING AND TESTING.
+#           IT WILL NOT WORK, TRUST ME!
 # 
-# TODO LEARN HOW TO USE THE COLLECT FUNCTION 
+# ALSO, LEARN HOW TO USE THE COLLECT FUNCTION 
 # TO SELECT A CORRECT BETTER IMPUT DATA FRAME
+# NOTE: THE ACCURACY IS 0.618431 WITH THE CLASSIFICATION TREE!
+#       NEXT TIME TRY TO IMPROVE.
 
 # Export data set to more or less kaggle format
-write.csv(df.predict.bug, "submissions/decision_tree_formated.csv",
+
+dataCSVComp <- read.csv("data/comp.csv")
+dataCSVComp <- na.omit(dataCSVComp)
+tem.dataCSVComp <- dataCSVComp[-c(1:7)]
+
+#########################Decision tree with competion data######################
+png(file = "decision_tree_with_competion_data.png")
+
+output.tree.comp <- rpart(
+  Bugs ~ ., 
+  data = tem.dataCSVComp,
+  method = "class")
+
+print(output.tree.comp)
+
+plot(output.tree.comp)
+dev.off()
+
+# Prediction
+predict.bug <- predict(output.tree, tem.dataCSVComp, type = 'prob')
+predict.bug
+
+# Turn prediction data into a data.frame
+df.predict.bug <- data.frame(predict.bug)
+# Eliminate the first column because it is the classes that do not have bugs
+df.predict.bug <- df.predict.bug[,-c(1)]
+df.predict.bug
+
+# Display information as a table
+table_bug <- table(tem.dataCSVComp$Bugs, df.predict.bug)
+table_bug
+
+# Confusion matrix 
+m.conf<-table(tem.dataCSVComp$Bugs, df.predict.bug)
+
+print(m.conf)
+
+accuracy <- sum( diag(m.conf)) / sum (m.conf)
+
+print(accuracy)
+
+predict.bug <- predict.bug[,-c(-2)]
+predict.bug
+
+# Save the data into submission format.
+
+write.csv(predict.bug, "submissions/decision_tree_formated.csv",
           row.names = TRUE,
           col.names = TRUE)
