@@ -180,8 +180,8 @@ barplot(prop.table(table(tem.dataCSV.balanced.sample$bugs)),
         main = "Class Distribution")
 
 ################################################################################
-# We are going to try with over, under an both fittings as well as with 
-# ROSE and SMOTE to see what gives the best accuracy.
+# We are going to try with over, under an both sampling as well as with 
+# SMOTE function to see what gives the best accuracy.
 # 
 ###########################Try with over fitting################################
 # We need to do over sampling for all the samples!!!
@@ -226,20 +226,6 @@ barplot(prop.table(table(balanced.data.both.sampling$bugs)),
         col = rainbow(2),
         ylim = c(0, 1),
         main = "Class Distribution over and under sampling")
-
-############################### SMOTE function #################################
-# TODO SMOTE FUNCTION NOT WORKING YET
-################################################################################
-balanced.data.SMOTE.sampling <- 
-        SMOTE(tem.dataCSV.balanced.sample$bugs, tem.dataCSV.balanced.sample$bugs)
-table(balanced.data.SMOTE.sampling$bugs)
-
-# Visualize the data
-barplot(prop.table(table(balanced.data.SMOTE.sampling$bugs)),
-        col = rainbow(2),
-        ylim = c(0, 1),
-        main = "Class Distribution ROSE function")
-
 ###########################Divide our balanced data ############################
 # Trying with: both
 #
@@ -275,15 +261,72 @@ accuracy
 error.dt.test <- 1 - sum(diag(cm.dt)) / sum(cm.dt)
 error.dt.test
 
-# Compute the confusion matrix and other important data!
-# TODO NOT WORKING BECAUSE THE DATA IS AS AN INTEGER INSTED AS AN FACTOR
-confusionMatrix(predict(dt, tem.dataCSV.test, type = "class"), 
-                tem.dataCSV.test$bugs)
-# Very high accuracy: 
-#                       Accuracy : 0.9901          
-#                       95% CI : (0.9887, 0.9913)
-#                       No Information Rate : 0.9534          
-#                       P-Value [Acc > NIR] : < 2.2e-16
+class(tem.dataCSV.test$bugs)
+dt.preds <- as.numeric(dt.preds)
+class(dt.preds)
+roc.accuracy <- roc(tem.dataCSV.test$bugs, dt.preds)
+print(roc.accuracy)
+plot(roc.accuracy)
+# The are under the curve improved a lot!
+# Area under the curve: 0.7421
+############################### SMOTE function #################################
+# TODO SMOTE FUNCTION NOT WORKING YET
+###########################Divide our balanced data ############################
+# Trying with: SMOTE
+#
+################################################################################
+set.seed(2987465)
+index <- sample(1:nrow(balanced.data.both.sampling), 
+                as.integer(0.7*nrow(balanced.data.both.sampling)))
+tem.dataCSV.train <- balanced.data.both.sampling[index,]
+tem.dataCSV.test <- balanced.data.both.sampling[-index,]
+
+dim(tem.dataCSV.train)
+dim(tem.dataCSV.test)
+
+# The SMOTE function requires the target variable to be numeric
+tem.dataCSV.train$bugs <- as.numeric(tem.dataCSV.train$bugs)
+tem.dataCSV.test$bugs <- as.numeric(tem.dataCSV.test$bugs)
+class(tem.dataCSV.train$bugs)
+class(tem.dataCSV.test$bugs)
+# It is a numeric now!
+
+tem.dataCSV.train.SMOTE <- SMOTE(tem.dataCSV.train,
+                                 tem.dataCSV.train$bugs,
+                                 K = 5)
+# Extract only the balanced dataset
+tem.dataCSV.train.SMOTE <- tem.dataCSV.train.SMOTE$data
+tem.dataCSV.train.SMOTE$bugs <- as.factor(tem.dataCSV.train.SMOTE$bugs)
+table(tem.dataCSV.train.SMOTE$bugs)
+
+dt <- rpart( bugs ~ .,
+             data = tem.dataCSV.train.SMOTE,
+             method = "class")
+
+# Use the type = "class" for a classification tree!
+dt.preds <- predict(dt, tem.dataCSV.test, type = "class")
+# Use the type = "prob" to get the probabilities!
+dt.pred.probs <- predict(dt, tem.dataCSV.test, type = "prob")
+dt.pred.probs
+
+# compute confusion matrix
+cm.dt <- table(dt.preds, tem.dataCSV.test$bugs)
+cm.dt
+
+accuracy <- sum(diag(cm.dt)) / sum(cm.dt)
+accuracy
+error.dt.test <- 1 - sum(diag(cm.dt)) / sum(cm.dt)
+error.dt.test
+
+class(tem.dataCSV.test$bugs)
+dt.preds <- as.numeric(dt.preds)
+class(dt.preds)
+roc.accuracy <- roc(tem.dataCSV.test$bugs, dt.preds)
+print(roc.accuracy)
+plot(roc.accuracy)
+
+
+
 ################################################################################
 
 # ATENTION: YOU NEED TO USE THE COMPETION DATA, THE ALL DATASET.
