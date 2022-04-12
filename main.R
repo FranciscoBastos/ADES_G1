@@ -93,13 +93,15 @@ tem.dataCSV.test <- na.omit(tem.dataCSV.test)
 dt <- rpart( bugs ~ .,
              data = tem.dataCSV.train,
              method = "class")
-
-dt.preds <- predict(dt, tem.dataCSV.train, type = "class") # class
-dt.pred.probs <- predict(dt, tem.dataCSV.train, type = "prob") # ... and probabilities
+# We use the type = "class" for the classification tree
+dt.preds <- predict(dt, tem.dataCSV.train, type = "class")
+# We use the type = "prob" to get the probabilities
+dt.preds
+dt.pred.probs <- predict(dt, tem.dataCSV.train, type = "prob") 
 dt.pred.probs
 
 # make predictions for test data
-dt.preds <- predict(dt, tem.dataCSV.test, type="class") # class
+dt.preds <- predict(dt, tem.dataCSV.test, type="class")
 
 # compute confusion matrix
 cm.dt <- table(dt.preds, tem.dataCSV.test$bugs)
@@ -110,6 +112,15 @@ accuracy
 error.dt.test <- 1 - sum(diag(cm.dt)) / sum(cm.dt)
 error.dt.test
 
+# ROC - are under the curve a more viable metric for the accuracy of our model
+# Both of the arguments on the ROC function need to be numeric!
+library(pROC)
+class(tem.dataCSV.test$bugs)
+dt.preds <- as.numeric(dt.preds)
+class(dt.preds)
+roc.accuracy <- roc(tem.dataCSV.test$bugs, dt.preds)
+print(roc.accuracy)
+plot(roc.accuracy)
 ###############################Cleaning the data ###############################
 # How to correct the data test information, when we know that the data is 
 # unbalanced?
@@ -176,7 +187,6 @@ barplot(prop.table(table(tem.dataCSV.balanced.sample$bugs)),
 # We need to do over sampling for all the samples!!!
 # We need to do under sampling for all the samples!!!
 # We need to do both (over and under) sampling for all the samples!!!
-# We need to do ROSE sampling for all the samples!!!
 # We need to do SMOTE sampling for all the samples!!!
 ################################### Over #######################################
 
@@ -244,7 +254,7 @@ tem.dataCSV.test <- balanced.data.both.sampling[-index,]
 dim(tem.dataCSV.train)
 dim(tem.dataCSV.test)
 
-######################## Prediction with the balanced data #####################
+##################### Prediction with the balanced data ########################
 
 dt <- rpart( bugs ~ .,
              data = tem.dataCSV.train,
@@ -267,8 +277,6 @@ error.dt.test
 
 # Compute the confusion matrix and other important data!
 # TODO NOT WORKING BECAUSE THE DATA IS AS AN INTEGER INSTED AS AN FACTOR
-tem.dataCSV.balanced.sample$bugs <-
-        as.factor(as.logical(tem.dataCSV.balanced.sample$bugs))
 confusionMatrix(predict(dt, tem.dataCSV.test, type = "class"), 
                 tem.dataCSV.test$bugs)
 # Very high accuracy: 
