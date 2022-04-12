@@ -135,7 +135,8 @@ plot(roc.accuracy)
 # Helps:
 # https://mikedenly.com/posts/2020/03/balanced-panel/
 # https://www.r-bloggers.com/2021/05/class-imbalance-handling-imbalanced-data-in-r/ 
-# 
+# https://rpubs.com/ZardoZ/SMOTE_FRAUD_DETECTION
+#
 ################################################################################
 ##################### Analyze our data set and fix unbalanced ##################
 
@@ -187,7 +188,6 @@ barplot(prop.table(table(tem.dataCSV.balanced.sample$bugs)),
 # We need to do over sampling for all the samples!!!
 # We need to do under sampling for all the samples!!!
 # We need to do both (over and under) sampling for all the samples!!!
-# We need to do SMOTE sampling for all the samples!!!
 ################################### Over #######################################
 
 balanced.data.over.sampling <- 
@@ -270,8 +270,7 @@ plot(roc.accuracy)
 # The are under the curve improved a lot!
 # Area under the curve: 0.7421
 ############################### SMOTE function #################################
-# TODO SMOTE FUNCTION NOT WORKING YET
-###########################Divide our balanced data ############################
+# Divide our balanced data 
 # Trying with: SMOTE
 #
 ################################################################################
@@ -291,6 +290,7 @@ class(tem.dataCSV.train$bugs)
 class(tem.dataCSV.test$bugs)
 # It is a numeric now!
 
+# For the training data set
 tem.dataCSV.train.SMOTE <- SMOTE(tem.dataCSV.train,
                                  tem.dataCSV.train$bugs,
                                  K = 5)
@@ -299,18 +299,28 @@ tem.dataCSV.train.SMOTE <- tem.dataCSV.train.SMOTE$data
 tem.dataCSV.train.SMOTE$bugs <- as.factor(tem.dataCSV.train.SMOTE$bugs)
 table(tem.dataCSV.train.SMOTE$bugs)
 
+# For the test data set
+tem.dataCSV.test.SMOTE <- SMOTE(tem.dataCSV.test, 
+                                tem.dataCSV.test$bugs, 
+                                K = 5)
+# Extract only the balanced dataset
+tem.dataCSV.test.SMOTE <- tem.dataCSV.test.SMOTE$data
+tem.dataCSV.test.SMOTE$bugs <- as.factor(tem.dataCSV.test.SMOTE$bugs)
+table(tem.dataCSV.test.SMOTE$bugs)
+
 dt <- rpart( bugs ~ .,
              data = tem.dataCSV.train.SMOTE,
              method = "class")
-
+dt
 # Use the type = "class" for a classification tree!
-dt.preds <- predict(dt, tem.dataCSV.test, type = "class")
+dt.preds <- predict(dt, tem.dataCSV.test.SMOTE, type = "class")
+dt.preds
 # Use the type = "prob" to get the probabilities!
-dt.pred.probs <- predict(dt, tem.dataCSV.test, type = "prob")
+dt.pred.probs <- predict(dt, tem.dataCSV.test.SMOTE, type = "prob")
 dt.pred.probs
 
 # compute confusion matrix
-cm.dt <- table(dt.preds, tem.dataCSV.test$bugs)
+cm.dt <- table(dt.preds, tem.dataCSV.test.SMOTE$bugs)
 cm.dt
 
 accuracy <- sum(diag(cm.dt)) / sum(cm.dt)
@@ -324,19 +334,21 @@ class(dt.preds)
 roc.accuracy <- roc(tem.dataCSV.test$bugs, dt.preds)
 print(roc.accuracy)
 plot(roc.accuracy)
-
-
+# The area under the curve is 1
+# Area under the curve: 1
+# Very suspicious!
 
 ################################################################################
-
+# TODO MAKING A NEW PREDICTION WITH THE NEW IMPROVED MODEL.
+#
 # ATENTION: YOU NEED TO USE THE COMPETION DATA, THE ALL DATASET.
 #           YOU CANNOT DEVIDE THE DATASET INTO TRAINING AND TESTING.
 #           IT WILL NOT WORK, TRUST ME!
 # 
-# ALSO, LEARN HOW TO USE THE COLLECT FUNCTION 
-# TO SELECT A CORRECT BETTER IMPUT DATA FRAME
-# NOTE: THE ACCURACY IS 0.618431 WITH THE CLASSIFICATION TREE!
-#       NEXT TIME TRY TO IMPROVE.
+# NOTE 1: 
+#       THE ACCURACY ON THE FIRTS TRY WAS OF 0.618431 
+#       WITH THE CLASSIFICATION TREE!
+#       
 #
 # Cannot calculate confusion matrix, error and accuracy
 # because the bugs column does not exist.
@@ -350,7 +362,7 @@ tem.dataCSVComp <- dataCSVComp[-c(1:7)]
 #######################Decision tree with competition data######################
 
 # Prediction
-predict.bug <- predict(dt, tem.dataCSVComp.balanced, type = 'prob')
+predict.bug <- predict(dt, tem.dataCSVComp, type = 'prob')
 predict.bug
 
 # make predictions for training data
