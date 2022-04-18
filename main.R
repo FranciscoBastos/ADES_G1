@@ -53,7 +53,6 @@ dataCSV <- read.csv("data/dev.csv")
 summary(dataCSV)
 head(dataCSV)
 tail(dataCSV)
-str(dataCSV)
 dim(dataCSV)
 
 dataCSV <- na.omit(dataCSV)
@@ -62,14 +61,13 @@ dataCSV <- na.omit(dataCSV)
 # For more information, if there is an error go-to:
 # https://data-hacks.com/r-error-do_one-nmeth-na-nan-inf-foreign-function-call-arg-1
 ################################################################################
-# Create a vector for analysis with only the first 1000 lines of the data-set.
-# Also we removed the 1 to the 3 columns and the last - because they had 
-# non numerical values.
+# Create a vector for analysis with only the first 25000 lines of the data-set.
+# Also we removed the 1 to the 7 columns - because they were labeling columns.
 #
-# Made this to turn the logical values of true and false to 1 and 0 respectively
-# Remove the last column as well: 
+################################################################################
 tem.dataCSV <- dataCSV[1:25000,-c(1:7)]
 
+# Made this to turn the logical values of true and false to 1 and 0 respectively
 tem.dataCSV$bugs <- as.integer(as.logical(tem.dataCSV$bugs))
 
 # K-Means algorithm from the simplified data-set.
@@ -345,14 +343,13 @@ plot(roc.accuracy)
 #           YOU CANNOT DEVIDE THE DATASET INTO TRAINING AND TESTING.
 #           IT WILL NOT WORK, TRUST ME!
 # 
-# NOTE 1: 
-#       THE ACCURACY ON THE FIRTS TRY WAS OF 0.618431 
-#       WITH THE CLASSIFICATION TREE!
+# SUBMISSION 1: 
+#               THE ROC ON THE FIRTS TRY WAS OF 0.618431 
+#               WITH THE CLASSIFICATION TREE!
+# SUBMISSION 2:
+#               THE ROC ON THE SECOND TRY WAS OF 0.7349
+#               WITH THE CLASSIFICATION TREE AND BOTH SAMPELING!
 #       
-#
-# Cannot calculate confusion matrix, error and accuracy
-# because the bugs column does not exist.
-
 # Export data set to more or less Kaggle format
 
 dataCSVComp <- read.csv("data/comp.csv")
