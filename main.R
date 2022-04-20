@@ -289,14 +289,19 @@ class(tem.dataCSV.test$bugs)
 # It is a numeric now!
 
 # For the training data set
-tem.dataCSV.train.SMOTE <- SMOTE(tem.dataCSV.train,
+# All but the last column
+tem.dataCSV.train.SMOTE <- SMOTE(tem.dataCSV.train[,-ncol(tem.dataCSV.train)],
                                  tem.dataCSV.train$bugs,
                                  K = 5)
+
 # Extract only the balanced dataset
 tem.dataCSV.train.SMOTE <- tem.dataCSV.train.SMOTE$data
+# Change the name from class to bugs
+colnames(tem.dataCSV.train.SMOTE) [ncol(tem.dataCSV.train.SMOTE)] <- "bugs"
 tem.dataCSV.train.SMOTE$bugs <- as.factor(tem.dataCSV.train.SMOTE$bugs)
 table(tem.dataCSV.train.SMOTE$bugs)
 
+# MUST NOT DO THIS !!
 # For the test data set
 tem.dataCSV.test.SMOTE <- SMOTE(tem.dataCSV.test, 
                                 tem.dataCSV.test$bugs, 
@@ -311,14 +316,14 @@ dt <- rpart( bugs ~ .,
              method = "class")
 dt
 # Use the type = "class" for a classification tree!
-dt.preds <- predict(dt, tem.dataCSV.test.SMOTE, type = "class")
+dt.preds <- predict(dt, tem.dataCSV.test, type = "class")
 dt.preds
 # Use the type = "prob" to get the probabilities!
-dt.pred.probs <- predict(dt, tem.dataCSV.test.SMOTE, type = "prob")
+dt.pred.probs <- predict(dt, tem.dataCSV.test, type = "prob")
 dt.pred.probs
 
 # compute confusion matrix
-cm.dt <- table(dt.preds, tem.dataCSV.test.SMOTE$bugs)
+cm.dt <- table(dt.preds, tem.dataCSV.test$bugs)
 cm.dt
 
 accuracy <- sum(diag(cm.dt)) / sum(cm.dt)
@@ -332,9 +337,7 @@ class(dt.preds)
 roc.accuracy <- roc(tem.dataCSV.test$bugs, dt.preds)
 print(roc.accuracy)
 plot(roc.accuracy)
-# The area under the curve is 1
-# Area under the curve: 1
-# Very suspicious!
+# The area under the curve is 0.7349
 
 ################################################################################
 # TODO MAKING A NEW PREDICTION WITH THE NEW IMPROVED MODEL.
