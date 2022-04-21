@@ -301,16 +301,6 @@ colnames(tem.dataCSV.train.SMOTE) [ncol(tem.dataCSV.train.SMOTE)] <- "bugs"
 tem.dataCSV.train.SMOTE$bugs <- as.factor(tem.dataCSV.train.SMOTE$bugs)
 table(tem.dataCSV.train.SMOTE$bugs)
 
-# MUST NOT DO THIS !!
-# For the test data set
-tem.dataCSV.test.SMOTE <- SMOTE(tem.dataCSV.test, 
-                                tem.dataCSV.test$bugs, 
-                                K = 5)
-# Extract only the balanced dataset
-tem.dataCSV.test.SMOTE <- tem.dataCSV.test.SMOTE$data
-tem.dataCSV.test.SMOTE$bugs <- as.factor(tem.dataCSV.test.SMOTE$bugs)
-table(tem.dataCSV.test.SMOTE$bugs)
-
 dt <- rpart( bugs ~ .,
              data = tem.dataCSV.train.SMOTE,
              method = "class")
