@@ -182,7 +182,7 @@ barplot(prop.table(table(tem.dataCSV.balanced.sample$bugs)),
 # We are going to try with over, under an both sampling as well as with 
 # SMOTE function to see what gives the best accuracy.
 # 
-###########################Try with over fitting################################
+############################## Try with sampling ###############################
 # We need to do over sampling for all the samples!!!
 # We need to do under sampling for all the samples!!!
 # We need to do both (over and under) sampling for all the samples!!!
@@ -440,8 +440,330 @@ recall
 f1 <- 2 * ((precision * recall) / (precision + recall))
 f1
 
-######################### Trying with linear regression ########################
+################Trying with only the variables with correlation ################
+########################Searching for over-fitting again #######################
+dt <- rpart( bugs ~ 
+                     CC + CCL + CCO + CI + CLC + CLLC + LDC + NL + 
+                     CBO + CBOI + NOI + RFC + AD + CLOC + DLOC + PUA + TCLOC +
+                     DIT + NOA + LLOC + LOC + NG + NLA + NLG + NLPA + 
+                     NLPM + NLS + NM + NOS + NPA + NPM + NS + TLLOC + TLOC + 
+                     TNA + TNG + TNLA + TNLG + TNLM + TNLPA + TNLPM + TNLS + 
+                     TNM + TNOS + TNPM + WarningMajor + WarningMinor + 
+                     Documentation.Metric.Rules + CD,
+             data = tem.dataCSV.train.SMOTE,
+             method = "class")
+dt
+############################ For training dataset ##############################
+# Use the type = "class" for a classification tree!
+dt.preds <- predict(dt, tem.dataCSV.train.SMOTE, type = "class")
+dt.preds
+# Use the type = "prob" to get the probabilities!
+dt.pred.probs <- predict(dt, tem.dataCSV.train.SMOTE, type = "prob")
+dt.pred.probs
 
+# compute confusion matrix for training data
+cm.dt <- table(dt.preds, tem.dataCSV.train.SMOTE$bugs)
+cm.dt
+
+accuracy <- sum(diag(cm.dt)) / sum(cm.dt)
+accuracy # 0.8270894
+error.dt.test <- 1 - sum(diag(cm.dt)) / sum(cm.dt)
+error.dt.test # 0.1729106
+
+class(tem.dataCSV.train.SMOTE$bugs)
+dt.preds <- as.numeric(dt.preds)
+class(dt.preds)
+roc.accuracy <- roc(tem.dataCSV.train.SMOTE$bugs, dt.preds)
+print(roc.accuracy)
+plot(roc.accuracy)
+# The area under the curve is 0.8271
+# Other statistics
+# inspired by: https://towardsdatascience.com/accuracy-precision-recall-or-f1-331fb37c5cb9 
+precision <- cm.dt[1, 1]/sum(cm.dt[,1])
+precision # 0.807824
+recall <- cm.dt[1, 1]/sum(cm.dt[1,])
+recall # 0.8406463
+f1 <- 2 * ((precision * recall) / (precision + recall))
+f1 # 0.8239084
+############################### For test dataset ###############################
+# Use the type = "class" for a classification tree!
+dt.preds <- predict(dt, tem.dataCSV.test, type = "class")
+dt.preds
+# Use the type = "prob" to get the probabilities!
+dt.pred.probs <- predict(dt, tem.dataCSV.test, type = "prob")
+dt.pred.probs
+
+# compute confusion matrix
+cm.dt <- table(dt.preds, tem.dataCSV.test$bugs)
+cm.dt
+
+accuracy <- sum(diag(cm.dt)) / sum(cm.dt)
+accuracy # 0.8094262
+error.dt.test <- 1 - sum(diag(cm.dt)) / sum(cm.dt)
+error.dt.test # 0.1905738
+
+class(tem.dataCSV.test$bugs)
+dt.preds <- as.numeric(dt.preds)
+class(dt.preds)
+roc.accuracy <- roc(tem.dataCSV.test$bugs, dt.preds)
+print(roc.accuracy)
+plot(roc.accuracy)
+# The area under the curve is 0.6939
+# Other statistics
+# inspired by: https://towardsdatascience.com/accuracy-precision-recall-or-f1-331fb37c5cb9 
+precision <- cm.dt[1, 1]/sum(cm.dt[,1])
+precision # 0.8194593
+recall <- cm.dt[1, 1]/sum(cm.dt[1,])
+recall # 0.9785472
+f1 <- 2 * ((precision * recall) / (precision + recall))
+f1 # 0.8919652
+################Trying with only the variables with correlation ################
+# According to the post: 
+# https://machinelearningmastery.com/combine-oversampling-and-undersampling-for-imbalanced-classification/
+# We can use SOMTE with under sampling to obtain better results!
+# Trying: CORRELATION VARIABLES + SMOTE + UNDERSAMPLING
+#
+################################################################################
+################Trying with only the variables with correlation ################
+set.seed(2987465)
+index <- sample(1:nrow(tem.dataCSV.balanced.sample), 
+                as.integer(0.7*nrow(tem.dataCSV.balanced.sample)))
+tem.dataCSV.train <- tem.dataCSV.balanced.sample[index,]
+tem.dataCSV.test <- tem.dataCSV.balanced.sample[-index,]
+
+dim(tem.dataCSV.train)
+dim(tem.dataCSV.test)
+
+balanced.data.under.sampling.SOMTE.train <- 
+        ovun.sample(bugs~., 
+                    data=tem.dataCSV.train, 
+                    method = "under")$data
+table(balanced.data.under.sampling.SOMTE.train$bugs)
+
+# Visualize the data
+barplot(prop.table(table(balanced.data.under.sampling.SOMTE.train$bugs)),
+        col = rainbow(2),
+        ylim = c(0, 1),
+        main = "Class Distribution under sampling")
+
+# The SMOTE function requires the target variable to be numeric
+tem.dataCSV.train$bugs <- as.numeric(tem.dataCSV.train$bugs)
+tem.dataCSV.test$bugs <- as.numeric(tem.dataCSV.test$bugs)
+class(tem.dataCSV.train$bugs)
+class(tem.dataCSV.test$bugs)
+# It is a numeric now!
+
+# For the training data set
+# All but the last column
+tem.dataCSV.train.under.SMOTE <- 
+        SMOTE(balanced.data.under.sampling.SOMTE.train[,-ncol(balanced.data.under.sampling.SOMTE.train)],
+              balanced.data.under.sampling.SOMTE.train$bugs,
+              K = 5)
+
+# Extract only the balanced dataset
+tem.dataCSV.train.under.SMOTE <- tem.dataCSV.train.under.SMOTE$data
+# Change the name from class to bugs
+colnames(tem.dataCSV.train.under.SMOTE) [ncol(tem.dataCSV.train.under.SMOTE)] <- "bugs"
+tem.dataCSV.train.under.SMOTE$bugs <- as.factor(tem.dataCSV.train.under.SMOTE$bugs)
+table(tem.dataCSV.train.under.SMOTE$bugs)
+
+# Visualize the data
+barplot(prop.table(table(tem.dataCSV.train.under.SMOTE$bugs)),
+        col = rainbow(2),
+        ylim = c(0, 1),
+        main = "Class Distribution under sampling and SMOTE")
+
+dt <- rpart( bugs ~ 
+                     CC + CCL + CCO + CI + CLC + CLLC + LDC + NL + 
+                     CBO + CBOI + NOI + RFC + AD + CLOC + DLOC + PUA + TCLOC +
+                     DIT + NOA + LLOC + LOC + NG + NLA + NLG + NLPA + 
+                     NLPM + NLS + NM + NOS + NPA + NPM + NS + TLLOC + TLOC + 
+                     TNA + TNG + TNLA + TNLG + TNLM + TNLPA + TNLPM + TNLS + 
+                     TNM + TNOS + TNPM + WarningMajor + WarningMinor + 
+                     Documentation.Metric.Rules + CD,
+             data = tem.dataCSV.train.under.SMOTE,
+             method = "class")
+dt
+
+# Use the type = "class" for a classification tree!
+dt.preds <- predict(dt, tem.dataCSV.test, type = "class")
+dt.preds
+# Use the type = "prob" to get the probabilities!
+dt.pred.probs <- predict(dt, tem.dataCSV.test, type = "prob")
+dt.pred.probs
+
+# compute confusion matrix and statistcs
+cm.dt <- table(dt.preds, tem.dataCSV.test$bugs)
+cm.dt
+accuracy <- sum(diag(cm.dt)) / sum(cm.dt)
+accuracy # 0.653347
+error.dt.test <- 1 - sum(diag(cm.dt)) / sum(cm.dt)
+error.dt.test # 0.346653
+class(tem.dataCSV.test$bugs)
+dt.preds <- as.numeric(dt.preds)
+class(dt.preds)
+roc.accuracy <- roc(tem.dataCSV.test$bugs, dt.preds)
+print(roc.accuracy) # 0.7007
+plot(roc.accuracy)
+precision <- cm.dt[1, 1]/sum(cm.dt[,1])
+precision # 0.6492351
+recall <- cm.dt[1, 1]/sum(cm.dt[1,])
+recall # 0.9843581
+f1 <- 2 * ((precision * recall) / (precision + recall))
+f1 # 0.7824223
+
+############################ BOTH + SMOTE + CORRELATION ########################
+set.seed(2987465)
+index <- sample(1:nrow(tem.dataCSV.balanced.sample), 
+                as.integer(0.7*nrow(tem.dataCSV.balanced.sample)))
+tem.dataCSV.train <- tem.dataCSV.balanced.sample[index,]
+tem.dataCSV.test <- tem.dataCSV.balanced.sample[-index,]
+
+dim(tem.dataCSV.train)
+dim(tem.dataCSV.test)
+
+balanced.data.both.sampling <- 
+        ovun.sample(bugs~., data=tem.dataCSV.train, 
+                    method = "both")$data
+table(balanced.data.both.sampling$bugs)
+
+# Visualize the data
+barplot(prop.table(table(balanced.data.both.sampling$bugs)),
+        col = rainbow(2),
+        ylim = c(0, 1),
+        main = "Class Distribution over and under sampling")
+
+# For the training data set
+# All but the last column
+tem.dataCSV.train.both.SMOTE <- 
+        SMOTE(balanced.data.both.sampling[,-ncol(balanced.data.both.sampling)],
+              balanced.data.both.sampling$bugs,
+              K = 5)
+
+# Extract only the balanced dataset
+tem.dataCSV.train.both.SMOTE <- tem.dataCSV.train.both.SMOTE$data
+# Change the name from class to bugs
+colnames(tem.dataCSV.train.both.SMOTE) [ncol(tem.dataCSV.train.both.SMOTE)] <- "bugs"
+tem.dataCSV.train.both.SMOTE$bugs <- as.factor(tem.dataCSV.train.both.SMOTE$bugs)
+table(tem.dataCSV.train.both.SMOTE$bugs)
+
+# Visualize the data
+barplot(prop.table(table(tem.dataCSV.train.both.SMOTE$bugs)),
+        col = rainbow(2),
+        ylim = c(0, 1),
+        main = "Class Distribution under + ovrer sampling and SMOTE")
+
+dt <- rpart( bugs ~ 
+                     CC + CCL + CCO + CI + CLC + CLLC + LDC + NL + 
+                     CBO + CBOI + NOI + RFC + AD + CLOC + DLOC + PUA + TCLOC +
+                     DIT + NOA + LLOC + LOC + NG + NLA + NLG + NLPA + 
+                     NLPM + NLS + NM + NOS + NPA + NPM + NS + TLLOC + TLOC + 
+                     TNA + TNG + TNLA + TNLG + TNLM + TNLPA + TNLPM + TNLS + 
+                     TNM + TNOS + TNPM + WarningMajor + WarningMinor + 
+                     Documentation.Metric.Rules + CD,
+             data = tem.dataCSV.train.both.SMOTE,
+             method = "class")
+dt
+
+# Use the type = "class" for a classification tree!
+dt.preds <- predict(dt, tem.dataCSV.test, type = "class")
+dt.preds
+# Use the type = "prob" to get the probabilities!
+dt.pred.probs <- predict(dt, tem.dataCSV.test, type = "prob")
+dt.pred.probs
+
+# compute confusion matrix and statistcs
+cm.dt <- table(dt.preds, tem.dataCSV.test$bugs)
+cm.dt
+accuracy <- sum(diag(cm.dt)) / sum(cm.dt)
+accuracy # 0.704235
+error.dt.test <- 1 - sum(diag(cm.dt)) / sum(cm.dt)
+error.dt.test # 0.295765
+class(tem.dataCSV.test$bugs)
+dt.preds <- as.numeric(dt.preds)
+class(dt.preds)
+roc.accuracy <- roc(tem.dataCSV.test$bugs, dt.preds)
+print(roc.accuracy) # 0.7067
+plot(roc.accuracy)
+precision <- cm.dt[1, 1]/sum(cm.dt[,1])
+precision # 0.7040199
+recall <- cm.dt[1, 1]/sum(cm.dt[1,])
+recall # 0.9831098
+f1 <- 2 * ((precision * recall) / (precision + recall))
+f1 # 0.8204809
+
+############################ BOTH + SMOTE + ALL ########################
+set.seed(2987465)
+index <- sample(1:nrow(tem.dataCSV.balanced.sample), 
+                as.integer(0.7*nrow(tem.dataCSV.balanced.sample)))
+tem.dataCSV.train <- tem.dataCSV.balanced.sample[index,]
+tem.dataCSV.test <- tem.dataCSV.balanced.sample[-index,]
+
+dim(tem.dataCSV.train)
+dim(tem.dataCSV.test)
+
+balanced.data.both.sampling <- 
+        ovun.sample(bugs~., data=tem.dataCSV.train, 
+                    method = "both")$data
+table(balanced.data.both.sampling$bugs)
+
+# Visualize the data
+barplot(prop.table(table(balanced.data.both.sampling$bugs)),
+        col = rainbow(2),
+        ylim = c(0, 1),
+        main = "Class Distribution over and under sampling")
+
+# For the training data set
+# All but the last column
+tem.dataCSV.train.both.SMOTE <- 
+        SMOTE(balanced.data.both.sampling[,-ncol(balanced.data.both.sampling)],
+              balanced.data.both.sampling$bugs,
+              K = 5)
+
+# Extract only the balanced dataset
+tem.dataCSV.train.both.SMOTE <- tem.dataCSV.train.both.SMOTE$data
+# Change the name from class to bugs
+colnames(tem.dataCSV.train.both.SMOTE) [ncol(tem.dataCSV.train.both.SMOTE)] <- "bugs"
+tem.dataCSV.train.both.SMOTE$bugs <- as.factor(tem.dataCSV.train.both.SMOTE$bugs)
+table(tem.dataCSV.train.both.SMOTE$bugs)
+
+# Visualize the data
+barplot(prop.table(table(tem.dataCSV.train.both.SMOTE$bugs)),
+        col = rainbow(2),
+        ylim = c(0, 1),
+        main = "Class Distribution under + ovrer sampling and SMOTE")
+
+dt <- rpart( bugs ~ .,
+             data = tem.dataCSV.train.both.SMOTE,
+             method = "class")
+dt
+
+# Use the type = "class" for a classification tree!
+dt.preds <- predict(dt, tem.dataCSV.test, type = "class")
+dt.preds
+# Use the type = "prob" to get the probabilities!
+dt.pred.probs <- predict(dt, tem.dataCSV.test, type = "prob")
+dt.pred.probs
+
+# compute confusion matrix and statistcs
+cm.dt <- table(dt.preds, tem.dataCSV.test$bugs)
+cm.dt
+accuracy <- sum(diag(cm.dt)) / sum(cm.dt)
+accuracy # 0.7563183
+error.dt.test <- 1 - sum(diag(cm.dt)) / sum(cm.dt)
+error.dt.test # 0.2436817
+class(tem.dataCSV.test$bugs)
+dt.preds <- as.numeric(dt.preds)
+class(dt.preds)
+roc.accuracy <- roc(tem.dataCSV.test$bugs, dt.preds)
+print(roc.accuracy) # 0.7277
+plot(roc.accuracy)
+precision <- cm.dt[1, 1]/sum(cm.dt[,1])
+precision # 0.7588047
+recall <- cm.dt[1, 1]/sum(cm.dt[1,])
+recall # 0.9836292
+f1 <- 2 * ((precision * recall) / (precision + recall))
+f1 # 0.8567125
 
 ################################################################################
 #
