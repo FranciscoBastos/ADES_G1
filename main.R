@@ -187,9 +187,18 @@ barplot(prop.table(table(tem.dataCSV.balanced.sample$bugs)),
 # We need to do under sampling for all the samples!!!
 # We need to do both (over and under) sampling for all the samples!!!
 ################################### Over #######################################
+set.seed(2987465)
+index <- sample(1:nrow(tem.dataCSV.balanced.sample), 
+                as.integer(0.7*nrow(tem.dataCSV.balanced.sample)))
+tem.dataCSV.train <- tem.dataCSV.balanced.sample[index,]
+tem.dataCSV.test <- tem.dataCSV.balanced.sample[-index,]
+
+dim(tem.dataCSV.train)
+dim(tem.dataCSV.test)
+
 
 balanced.data.over.sampling <- 
-        ovun.sample(bugs~., data=tem.dataCSV.balanced.sample, 
+        ovun.sample(bugs~., data=tem.dataCSV.train, 
                     method = "over")$data
 table(balanced.data.over.sampling$bugs)
 
@@ -200,9 +209,17 @@ barplot(prop.table(table(balanced.data.over.sampling$bugs)),
         main = "Class Distribution over sampling")
 
 #################################### Under #####################################
+set.seed(2987465)
+index <- sample(1:nrow(tem.dataCSV.balanced.sample), 
+                as.integer(0.7*nrow(tem.dataCSV.balanced.sample)))
+tem.dataCSV.train <- tem.dataCSV.balanced.sample[index,]
+tem.dataCSV.test <- tem.dataCSV.balanced.sample[-index,]
+
+dim(tem.dataCSV.train)
+dim(tem.dataCSV.test)
 
 balanced.data.under.sampling <- 
-        ovun.sample(bugs~., data=tem.dataCSV.balanced.sample, 
+        ovun.sample(bugs~., data=tem.dataCSV.train, 
                     method = "under")$data
 table(balanced.data.under.sampling$bugs)
 
@@ -213,9 +230,17 @@ barplot(prop.table(table(balanced.data.under.sampling$bugs)),
         main = "Class Distribution under sampling")
 
 ################################### Both #######################################
+set.seed(2987465)
+index <- sample(1:nrow(tem.dataCSV.balanced.sample), 
+                as.integer(0.7*nrow(tem.dataCSV.balanced.sample)))
+tem.dataCSV.train <- tem.dataCSV.balanced.sample[index,]
+tem.dataCSV.test <- tem.dataCSV.balanced.sample[-index,]
+
+dim(tem.dataCSV.train)
+dim(tem.dataCSV.test)
 
 balanced.data.both.sampling <- 
-        ovun.sample(bugs~., data=tem.dataCSV.balanced.sample, 
+        ovun.sample(bugs~., data=tem.dataCSV.train, 
                     method = "both")$data
 table(balanced.data.both.sampling$bugs)
 
@@ -228,12 +253,6 @@ barplot(prop.table(table(balanced.data.both.sampling$bugs)),
 # Trying with: both
 #
 ################################################################################
-
-set.seed(2987465)
-index <- sample(1:nrow(balanced.data.both.sampling), 
-                as.integer(0.7*nrow(balanced.data.both.sampling)))
-tem.dataCSV.train <- balanced.data.both.sampling[index,]
-tem.dataCSV.test <- balanced.data.both.sampling[-index,]
 
 dim(tem.dataCSV.train)
 dim(tem.dataCSV.test)
@@ -273,10 +292,10 @@ plot(roc.accuracy)
 #
 ################################################################################
 set.seed(2987465)
-index <- sample(1:nrow(balanced.data.both.sampling), 
-                as.integer(0.7*nrow(balanced.data.both.sampling)))
-tem.dataCSV.train <- balanced.data.both.sampling[index,]
-tem.dataCSV.test <- balanced.data.both.sampling[-index,]
+index <- sample(1:nrow(tem.dataCSV.balanced.sample), 
+                as.integer(0.7*nrow(tem.dataCSV.balanced.sample)))
+tem.dataCSV.train <- tem.dataCSV.balanced.sample[index,]
+tem.dataCSV.test <- tem.dataCSV.balanced.sample[-index,]
 
 dim(tem.dataCSV.train)
 dim(tem.dataCSV.test)
@@ -377,7 +396,51 @@ corr_simple <- function(data=balanced.data.both.sampling, sig=0.70){
 
 corr_simple()
 
-# CC
+################Trying with only the variables with correlation ################
+dt <- rpart( bugs ~ 
+                     CC + CCL + CCO + CI + CLC + CLLC + LDC + NL + 
+                     CBO + CBOI + NOI + RFC + AD + CLOC + DLOC + PUA + TCLOC +
+                     DIT + NOA + LLOC + LOC + NG + NLA + NLG + NLPA + 
+                     NLPM + NLS + NM + NOS + NPA + NPM + NS + TLLOC + TLOC + 
+                     TNA + TNG + TNLA + TNLG + TNLM + TNLPA + TNLPM + TNLS + 
+                     TNM + TNOS + TNPM + WarningMajor + WarningMinor + 
+                     Documentation.Metric.Rules + CD,
+             data = tem.dataCSV.train.SMOTE,
+             method = "class")
+dt
+# Use the type = "class" for a classification tree!
+dt.preds <- predict(dt, tem.dataCSV.test, type = "class")
+dt.preds
+# Use the type = "prob" to get the probabilities!
+dt.pred.probs <- predict(dt, tem.dataCSV.test, type = "prob")
+dt.pred.probs
+
+# compute confusion matrix
+cm.dt <- table(dt.preds, tem.dataCSV.test$bugs)
+cm.dt
+
+accuracy <- sum(diag(cm.dt)) / sum(cm.dt)
+accuracy
+error.dt.test <- 1 - sum(diag(cm.dt)) / sum(cm.dt)
+error.dt.test
+
+class(tem.dataCSV.test$bugs)
+dt.preds <- as.numeric(dt.preds)
+class(dt.preds)
+roc.accuracy <- roc(tem.dataCSV.test$bugs, dt.preds)
+print(roc.accuracy)
+plot(roc.accuracy)
+# The area under the curve is 0.7228
+# Other statistics
+# inspired by: https://towardsdatascience.com/accuracy-precision-recall-or-f1-331fb37c5cb9 
+precision <- cm.dt[1, 1]/sum(cm.dt[,1])
+precision
+recall <- cm.dt[1, 1]/sum(cm.dt[1,])
+recall
+f1 <- 2 * ((precision * recall) / (precision + recall))
+f1
+
+######################### Trying with linear regression ########################
 
 
 ################################################################################
@@ -386,16 +449,20 @@ corr_simple()
 #           YOU CANNOT DEVIDE THE DATASET INTO TRAINING AND TESTING.
 #           IT WILL NOT WORK, TRUST ME!
 # 
-# SUBMISSION 1: 
-#               THE ROC ON THE FIRTS TRY WAS OF 0.618431 
+# SUBMISSION 3: 
+#               THE ROC ON THE THIRD TRY WAS OF 0.618431 
 #               WITH THE CLASSIFICATION TREE!
-# SUBMISSION 2:
-#               THE ROC ON THE SECOND TRY WAS OF 0.7349
+# SUBMISSION 4:
+#               THE ROC ON THE FORTH TRY WAS OF 0.7349
 #               WITH THE CLASSIFICATION TREE AND BOTH SAMPELING!
-# SUBMISSION 3:
-#               THE ROC ON THE THIRD TRY WAS OF 0.7349
+# SUBMISSION 5:
+#               THE ROC ON THE FIFHT TRY WAS OF 0.7349
 #               WITH THE CLASSIFICATION TREE AND SOMTE SAMPELING!
-#       
+# SUBMISSION 6:
+#               THE ROC ON THE SIXT TRY WAS OF 0.7228
+#               WITH THE CLASSIFICATION TREE, SOMTE SAMPELING 
+#               AND ALSO THE VARIABLES WITH HIGHER CORELATION (70 percent)!
+#
 # Export data set to more or less Kaggle format
 ################################################################################
 dataCSVComp <- read.csv("data/comp.csv")
