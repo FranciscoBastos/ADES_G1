@@ -513,7 +513,7 @@ dt.preds
 dt.pred.probs <- predict(dt, tem.dataCSV.test, type = "prob")
 dt.pred.probs
 
-# compute confusion matrix and statistcs
+# compute confusion matrix and statistics
 cm.dt <- table(dt.preds, tem.dataCSV.test$bugs)
 cm.dt
 accuracy <- sum(diag(cm.dt)) / sum(cm.dt)
@@ -571,9 +571,6 @@ tem.dataCSVComp <- dataCSVComp[-c(1:7)]
 # Prediction
 predict.bug <- predict(dt, tem.dataCSVComp, type = 'prob')
 predict.bug
-
-# make predictions for training data
-dt.preds <- predict(dt, tem.dataCSVComp, type="class") # class
 
 # Turn prediction data into a data.frame
 df.predict.bug <- data.frame(predict.bug)
