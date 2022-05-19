@@ -3,13 +3,17 @@ install.packages('zoo')
 install.packages('xts')
 install.packages('quantmod')
 install.packages('ROCR')
-install.packages("DMwR")
 install.packages("smotefamily")
 install.packages('caret')
 install.packages('ROSE')
-install.packages("gdata", "tree", "ROCR")
+install.packages("tree")
 install.packages("gdata")
-
+install.packages("survival")
+install.packages("lattice")
+install.packages("ggplot2")
+install.packages("Hmisc", dependencies = TRUE)
+install.packages('acepack')
+install.packages("randomForest")
 
 library("gdata")
 library("caret")
@@ -26,7 +30,6 @@ library("rpart.plot")
 library("neuralnet")
 library("party")
 library("partykit")
-library("DMwR")
 library("DMwR2")
 library("smotefamily")
 library("ROSE")
@@ -37,13 +40,22 @@ library("tidyverse")
 library("leaps")
 library("pROC")
 library("ggplot2")
+library("mlbench")
+library("Hmisc")
+library("leaps")
+library("MASS")
+library("klaR")
 
 
-suppressPackageStartupMessages(c(library(caret),library(corrplot),library(smotefamily)))
+suppressPackageStartupMessages(c(
+  library(caret),
+  library(corrplot),
+  library(smotefamily))
+  )
 
-if(!require('DMwR')) {
-  install.packages('DMwR')
-  library('DMwR')
+if(!require('DMwR2')) {
+  install.packages('DMwR2')
+  library('DMwR2')
 }
 
 ################################Load data#######################################
@@ -69,33 +81,35 @@ dataCSV <- read.csv("./data/dev.csv")
 ################################################################################
 ##################### Analyze our data set and fix unbalanced ##################
 # Re-sample the data in 55000 samples
-tem.dataCSV.balanced.sample <- dataCSV[1:55000, -c(1:7)]
+# The following variables have a variance of 0
+tem.dataCSV.balanced.sample <- subset(dataCSV, select=-c(ID,
+                                                         Parent,
+                                                         Component,
+                                                         Line,
+                                                         Column,
+                                                         EndLine,
+                                                         EndColumn,
+                                                         WarningBlocker, 
+                                                         Code.Size.Rules, 
+                                                         Comment.Rules, 
+                                                         Coupling.Rules, 
+                                                         MigratingToJUnit4.Rules,
+                                                         Migration13.Rules,
+                                                         Migration14.Rules,
+                                                         Migration15.Rules,
+                                                         Vulnerability.Rules))
 tem.dataCSV.balanced.sample <- na.omit(tem.dataCSV.balanced.sample)
+tem.dataCSV.balanced.sample <- tem.dataCSV.balanced.sample[1:55000, ]
+tem.dataCSV.balanced.sample$MigratingToJUnit4.Rules # should be NULL
 # Turn bugs logical column into a integer value of 1 or 0.
 tem.dataCSV.balanced.sample$bugs <-
   as.integer(as.logical(tem.dataCSV.balanced.sample$bugs))
 
-suppressMessages(library(plm)) # to remove note about dependencies
-is.pbalanced(tem.dataCSV.balanced.sample)
-# Is the data set balanced?
-# $ FALSE
-# The data set is not balanced!
-
-suppressMessages(library(tidyverse))
-
-tem.dataCSV.balanced <- make.pbalanced(tem.dataCSV.balanced.sample,
-                                       balance.type = c("fill"))
-
-class(tem.dataCSV.balanced$bugs)
+class(tem.dataCSV.balanced.sample$bugs)
 
 # Turn bugs logical column into a integer value of 1 or 0.
-tem.dataCSV.balanced$bugs <-
-  as.integer(as.logical(tem.dataCSV.balanced$bugs))
-
-is.pbalanced(tem.dataCSV.balanced)
-# Is the data set balanced?
-# $ TRUE
-# The data set is balanced!
+tem.dataCSV.balanced.sample$bugs <-
+  as.integer(as.logical(tem.dataCSV.balanced.sample$bugs))
 
 table(tem.dataCSV.balanced.sample$bugs)
 # Are the bugs balanced ?
@@ -106,7 +120,7 @@ table(tem.dataCSV.balanced.sample$bugs)
 barplot(prop.table(table(tem.dataCSV.balanced.sample$bugs)),
         col = rainbow(2),
         ylim = c(0, 1),
-        main = "Class distribution")
+        main = "Bug class distribution")
 
 ##############################Visualize our data################################
 # Inspired by the blog post:
@@ -117,7 +131,7 @@ barplot(prop.table(table(tem.dataCSV.balanced.sample$bugs)),
 # of our data set it is advisable to use a correlation of 95%
 ################################################################################
 
-corr_simple <- function(data=tem.dataCSV.balanced.sample, sig=0.95){
+corr_simple <- function(data=tem.dataCSV.balanced.sample, sig=0.80){
   # Convert data to numeric in order to run correlations
   # Convert to factor first to keep the integrity of the data - 
   # Each value will become a number rather than turn into NA
@@ -164,13 +178,24 @@ corr_simple()
 #
 ################################################################################
 set.seed(2987465)
-index <- sample(1:nrow(tem.dataCSV.balanced.sample), 
-                as.integer(0.7*nrow(tem.dataCSV.balanced.sample)))
-tem.dataCSV.train <- tem.dataCSV.balanced.sample[index,]
-tem.dataCSV.test <- tem.dataCSV.balanced.sample[-index,]
+# createDataPartition() function from the caret package to split the original dataset into a training and testing set and split data into training (80%) and testing set (20%)
+parts = createDataPartition(tem.dataCSV.balanced.sample$bugs, 
+                            p = 0.70, 
+                            list = FALSE)
+
+tem.dataCSV.train = tem.dataCSV.balanced.sample[parts, ]
+tem.dataCSV.test = tem.dataCSV.balanced.sample[-parts, ]
+X_train = tem.dataCSV.train[,-ncol(tem.dataCSV.balanced.sample)]
+y_train = tem.dataCSV.train[,ncol(tem.dataCSV.balanced.sample)]
+# index <- sample(1:nrow(tem.dataCSV.balanced.sample),
+#                 as.integer(0.7*nrow(tem.dataCSV.balanced.sample)))
+# tem.dataCSV.train <- tem.dataCSV.balanced.sample[index,]
+# tem.dataCSV.test <- tem.dataCSV.balanced.sample[-index,]
 
 dim(tem.dataCSV.train)
 dim(tem.dataCSV.test)
+dim(X_train)
+dim(y_train)
 
 # The SMOTE function requires the target variable to be numeric
 tem.dataCSV.train$bugs <- as.numeric(tem.dataCSV.train$bugs)
@@ -192,8 +217,14 @@ colnames(tem.dataCSV.train.SMOTE) [ncol(tem.dataCSV.train.SMOTE)] <- "bugs"
 tem.dataCSV.train.SMOTE$bugs <- as.factor(tem.dataCSV.train.SMOTE$bugs)
 table(tem.dataCSV.train.SMOTE$bugs)
 
-################################### Both #######################################
-
+################################### Both ######################################
+# To decrease the size of the data-set we should use under
+################################################################################
+# Needed this to reduce the size of the data set
+# https://www.statology.org/smote-in-r/
+################################################################################
+tem.dataCSV.train.SMOTE <- tem.dataCSV.train.SMOTE[1:55000, ]
+################################################################################
 train.smote.both <- 
   ovun.sample(bugs~., data=tem.dataCSV.train.SMOTE, 
               method = "both")$data
@@ -203,57 +234,85 @@ table(train.smote.both$bugs)
 barplot(prop.table(table(train.smote.both$bugs)),
         col = rainbow(2),
         ylim = c(0, 1),
-        main = "Class distribution (SMOTE, Over, Under)")
+        main = "Class distribution (SMOTE, Both)")
 
 ##################### Linear regression - selection of variables ###############
+# Inspired by the post: 
 # https://quantifyinghealth.com/stepwise-selection/
 # https://www.kaggle.com/code/mahmoud86/tutorial-subset-selection-methods/notebook
 # https://towardsdatascience.com/selecting-the-best-predictors-for-linear-regression-in-r-f385bf3d93e9
+# https://www.rdocumentation.org/packages/klaR/versions/1.7-0/topics/stepclass
+# https://rstudio-pubs-static.s3.amazonaws.com/425228_86d6a6878a4e4d22bc96414f1b732c36.html
+# https://topepo.github.io/caret/recursive-feature-elimination.html
+# https://machinelearningmastery.com/feature-selection-with-the-caret-r-package/
 #
+# Training methods:
+# http://topepo.github.io/caret/train-models-by-tag.html#ROC_Curves
 ################################################################################
-
-library("leaps")
-subset <-
-  regsubsets(bugs~.,
-             data =train.smote.both,
-             nbest = 1,      # 1 best model for each number of predictors
-             nvmax = 60,    # 60 for no limit on number of variables
-             force.in = NULL, force.out = NULL,
-             method = "backward",
-             really.big = TRUE)
-summary_best_subset <- summary(subset)
-as.data.frame(summary_best_subset$outmat)
-which.max(summary_best_subset$adjr2)
-summary_best_subset$which[61,]
+control <- trainControl(method="repeatedcv",
+                        number=10,
+                        repeats=3)
+# train the model
+model <- train(bugs ~ .,
+               data = train.smote.both,
+               method="rocc", # for ROC curves
+               preProcess = "scale",
+               trControl = control)
+# estimate variable importance
+importance <- varImp(model, scale = FALSE)
+# summarize importance
+print(importance)
+# plot importance
+plot(importance)
+################################################################################
+################################ Feature selection #############################
+# define the control using a random forest selection function
+control <- rfeControl(functions = treebagFuncs,
+                      method = "repeatedcv",
+                      repeats = 5, # number of repeats
+                      number = 10)
+# run the RFE algorithm
+results <- rfe(x = X_train, 
+               y = y_train, 
+               sizes = c(1:ncol(train.smote.both)), 
+               rfeControl = control)
+# summarize the results
+print(results)
+# list the chosen features
+predictors(results)
+# plot the results
+plot(results, type=c("g", "o"))
+################################################################################
 
 class(train.smote.both$bugs)
 
 train.smote.both$bugs <- as.numeric(train.smote.both$bugs)
 
-lm.model <- lm(bugs ~  
-                 CC + CCL + CCO + CI + CLC + CLLC + LDC + LLDC + LCOM5 + NL + 
-                 NLE + WMC + CBO + CBOI + NII + NOI + RFC + AD + CD + CLOC + 
-                 DLOC + PDA + PUA + TCD + TCLOC + DIT + NOA + NOC + NOD + NOP + 
-                 LLOC + LOC + NA.  + NG + NLA + NLG + NLM  + NLPA + NLPM + NLS +
-                 NM + NOS + NPA + NPM + NS + TLLOC + TLOC + TNA + TNG  + TNLA + 
-                 TNLG  + TNLM + TNLPA + TNLPM + TNLS + TNM + TNOS + TNPA+ TNPM +
-                 TNS + WarningBlocker + WarningCritical + WarningInfo + 
-                 WarningMajor + WarningMinor + Android.Rules + Basic.Rules + 
-                 Brace.Rules + Clone.Implementation.Rules + Clone.Metric.Rules +
-                 Code.Size.Rules + Cohesion.Metric.Rules + Comment.Rules +
-                 Complexity.Metric.Rules + Controversial.Rules +
-                 Coupling.Metric.Rules + Coupling.Rules + Design.Rules + 
-                 Documentation.Metric.Rules + Empty.Code.Rules +
-                 Finalizer.Rules + Import.Statement.Rules +
+lm.model <- lm(bugs ~ CC + CCL + CCO + CI + CLC + CLLC + LDC + LLDC + LCOM5 + 
+                 NL + NLE + WMC + CBO + CBOI + NII + NOI + RFC + AD + 
+                 CD + CLOC + DLOC + PDA + PUA + TCD + TCLOC + DIT + NOA + 
+                 NOC + NOD + NOP + LLOC + LOC + NA. + NG + NLA + NLG + NLM + 
+                 NLPA + NLPM + NLS + NM + NOS + NPA + NPM + NS + TLLOC + TLOC + 
+                 TNA + TNG + TNLA + TNLG + TNLM + TNLPA + TNLPM + TNLS + TNM + 
+                 TNOS + TNPA + TNPM + TNS + WarningBlocker + WarningCritical + 
+                 WarningInfo + WarningMajor + WarningMinor + Android.Rules + 
+                 Basic.Rules + Brace.Rules + Clone.Implementation.Rules + 
+                 Clone.Metric.Rules + Code.Size.Rules + Cohesion.Metric.Rules + 
+                 Comment.Rules + Complexity.Metric.Rules + 
+                 Controversial.Rules + Coupling.Metric.Rules + 
+                 Coupling.Rules + Design.Rules + 
+                 Documentation.Metric.Rules + Empty.Code.Rules + 
+                 Finalizer.Rules + Import.Statement.Rules + 
                  Inheritance.Metric.Rules + J2EE.Rules + JUnit.Rules + 
-                 Jakarta.Commons.Logging.Rules + Java.Logging.Rules +
-                 JavaBean.Rules + MigratingToJUnit4.Rules + Migration.Rules +
-                 Migration13.Rules + Migration14.Rules + Migration15.Rules +
-                 Naming.Rules + Optimization.Rules +
-                 Type.Resolution.Rules + Unnecessary.and.Unused.Code.Rules +
-                 Vulnerability.Rules + Security.Code.Guideline.Rules + 
-                 Size.Metric.Rules + Strict.Exception.Rules + 
-                 String.and.StringBuffer.Rules, data = train.smote.both)
+                 Jakarta.Commons.Logging.Rules + Java.Logging.Rules + 
+                 JavaBean.Rules + MigratingToJUnit4.Rules + Migration.Rules + 
+                 Migration13.Rules + Migration14.Rules + 
+                 Migration15.Rules + Naming.Rules + Optimization.Rules + 
+                 Security.Code.Guideline.Rules + Size.Metric.Rules + 
+                 Strict.Exception.Rules + String.and.StringBuffer.Rules + 
+                 Type.Resolution.Rules + Unnecessary.and.Unused.Code.Rules + 
+                 Vulnerability.Rules,
+               data = train.smote.both)
 
 lm.pred <- predict(lm.model, tem.dataCSV.test)
 summary(lm.pred)

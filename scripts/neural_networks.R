@@ -84,33 +84,6 @@ tem.dataCSV.balanced.sample <- na.omit(tem.dataCSV.balanced.sample)
 tem.dataCSV.balanced.sample$bugs <-
   as.integer(as.logical(tem.dataCSV.balanced.sample$bugs))
 
-suppressMessages(library(plm)) # to remove note about dependencies
-is.pbalanced(tem.dataCSV.balanced.sample)
-# Is the data set balanced?
-# $ FALSE
-# The data set is not balanced!
-
-suppressMessages(library(tidyverse))
-
-tem.dataCSV.balanced <- make.pbalanced(tem.dataCSV.balanced.sample,
-                                       balance.type = c("fill"))
-
-class(tem.dataCSV.balanced$bugs)
-
-# Turn bugs logical column into a integer value of 1 or 0.
-tem.dataCSV.balanced$bugs <-
-  as.integer(as.logical(tem.dataCSV.balanced$bugs))
-
-is.pbalanced(tem.dataCSV.balanced)
-# Is the data set balanced?
-# $ TRUE
-# The data set is balanced!
-
-table(tem.dataCSV.balanced.sample$bugs)
-# Are the bugs balanced ?
-# No the bugs are not balanced.
-# Let's balance our bugs.
-
 # Visualize the data
 barplot(prop.table(table(tem.dataCSV.balanced.sample$bugs)),
         col = rainbow(2),
@@ -178,7 +151,7 @@ tem.dataCSV.test %<>% mutate_if(is.integer, as.numeric)
 # https://www.geeksforgeeks.org/how-to-normalize-and-standardize-data-in-r/
 # Custom function to implement min max scaling
 
-train.smote.both.norm <- scale(train.smote.both, scale = FALSE)
+train.smote.both.norm <- scale(train.smote.both, scale = TRUE)
 
 ########################### Preliminary setup ##################################
 neural.net.bugs <- neuralnet(bugs ~ CC + CCL + CCO + CI + CLC + CLLC + LDC + 
@@ -213,11 +186,10 @@ neural.net.bugs <- neuralnet(bugs ~ CC + CCL + CCO + CI + CLC + CLLC + LDC +
                                Size.Metric.Rules + Strict.Exception.Rules + 
                                String.and.StringBuffer.Rules,
                              data = train.smote.both.norm,
-                             stepmax = 10000,
-                             hidden = c(12,7),
+                             hidden = c(12,7), # Start at 10 - 5 - 5 - 100, with 2 hidden layers.
                              linear.output = FALSE,
                              lifesign = 'full',
-                             rep=1)
+                             rep = 5)
 ########################## Plot for better data visualization ##################
 plot(neural.net.bugs, col.hidden = 'darkgreen',
      col.hidden.synapse = 'darkgreen', 

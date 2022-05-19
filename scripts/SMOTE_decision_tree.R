@@ -76,28 +76,11 @@ dataCSV <- na.omit(dataCSV)
 #
 ################################################################################
 ##################### Analyze our data set and fix unbalanced ##################
-
-suppressMessages(library(plm)) # to remove note about dependencies
-is.pbalanced(tem.dataCSV)
-# Is the data set balanced?
-# $ FALSE
-# The data set is not balanced!
-
-suppressMessages(library(tidyverse))
-
-tem.dataCSV.balanced <- make.pbalanced(tem.dataCSV,
-                                       balance.type = c("fill"))
-
 class(tem.dataCSV.balanced$bugs)
 
 # Turn bugs logical column into a integer value of 1 or 0.
 tem.dataCSV.balanced$bugs <-
   as.integer(as.logical(tem.dataCSV.balanced$bugs))
-
-is.pbalanced(tem.dataCSV.balanced)
-# Is the data set balanced?
-# $ TRUE
-# The data set is balanced!
 
 # Re-sample the data in half
 tem.dataCSV.balanced.sample <- tem.dataCSV.balanced[1:35000, ]
@@ -167,14 +150,13 @@ cm.dt <- table(dt.preds, tem.dataCSV.test$bugs)
 cm.dt
 
 accuracy <- sum(diag(cm.dt)) / sum(cm.dt)
-accuracy
+accuracy # 0.8494286
 error.dt.test <- 1 - sum(diag(cm.dt)) / sum(cm.dt)
-error.dt.test
+error.dt.test # 0.1505714
 
 class(tem.dataCSV.test$bugs)
 dt.preds <- as.numeric(dt.preds)
 class(dt.preds)
 roc.accuracy <- roc(tem.dataCSV.test$bugs, dt.preds)
-print(roc.accuracy)
+print(roc.accuracy) # The area under the curve is 0.6646
 plot(roc.accuracy)
-# The area under the curve is 0.6951

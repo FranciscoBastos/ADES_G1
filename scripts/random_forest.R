@@ -79,38 +79,6 @@ tem.dataCSV.balanced.sample <- na.omit(tem.dataCSV.balanced.sample)
 tem.dataCSV.balanced.sample$bugs <-
   as.integer(as.logical(tem.dataCSV.balanced.sample$bugs))
 
-suppressMessages(library(plm)) # to remove note about dependencies
-is.pbalanced(tem.dataCSV.balanced.sample)
-# Is the data set balanced?
-# $ FALSE
-# The data set is not balanced!
-
-suppressMessages(library(tidyverse))
-
-tem.dataCSV.balanced <- make.pbalanced(tem.dataCSV.balanced.sample,
-                                       balance.type = c("fill"))
-
-class(tem.dataCSV.balanced$bugs)
-
-# Turn bugs logical column into a integer value of 1 or 0.
-tem.dataCSV.balanced$bugs <-
-  as.integer(as.logical(tem.dataCSV.balanced$bugs))
-
-is.pbalanced(tem.dataCSV.balanced)
-# Is the data set balanced?
-# $ TRUE
-# The data set is balanced!
-
-table(tem.dataCSV.balanced.sample$bugs)
-# Are the bugs balanced ?
-# No the bugs are not balanced.
-# Let's balance our bugs.
-
-# Visualize the data
-barplot(prop.table(table(tem.dataCSV.balanced.sample$bugs)),
-        col = rainbow(2),
-        ylim = c(0, 1),
-        main = "Class distribution")
 ############################### SMOTE function #################################
 # Divide our balanced data 
 # Trying with: SMOTE
@@ -156,7 +124,7 @@ table(train.smote.both$bugs)
 barplot(prop.table(table(train.smote.both$bugs)),
         col = rainbow(2),
         ylim = c(0, 1),
-        main = "Class distribution (SMOTE, Over, Under)")
+        main = "Bug class distribution (SMOTE, Over, Under sampeling)")
 
 ###################### Apply the random forest algorithm #######################
 rf <- rfsrc(bugs ~ CC + CCL + CCO + CI + CLC + CLLC + LDC + LLDC + LCOM5 + NL + 

@@ -76,28 +76,11 @@ dataCSV <- na.omit(dataCSV)
 #
 ################################################################################
 ##################### Analyze our data set and fix unbalanced ##################
-
-suppressMessages(library(plm)) # to remove note about dependencies
-is.pbalanced(tem.dataCSV)
-# Is the data set balanced?
-# $ FALSE
-# The data set is not balanced!
-
-suppressMessages(library(tidyverse))
-
-tem.dataCSV.balanced <- make.pbalanced(tem.dataCSV,
-                                       balance.type = c("fill"))
-
 class(tem.dataCSV.balanced$bugs)
 
 # Turn bugs logical column into a integer value of 1 or 0.
 tem.dataCSV.balanced$bugs <-
         as.integer(as.logical(tem.dataCSV.balanced$bugs))
-
-is.pbalanced(tem.dataCSV.balanced)
-# Is the data set balanced?
-# $ TRUE
-# The data set is balanced!
 
 # Re-sample the data in half
 tem.dataCSV.balanced.sample <- tem.dataCSV.balanced[1:35000, ]
@@ -123,7 +106,7 @@ barplot(prop.table(table(tem.dataCSV.balanced.sample$bugs)),
 #
 ################################################################################
 
-corr_simple <- function(data=balanced.data.both.sampling, sig=0.70){
+corr_simple <- function(data=balanced.data.both.sampling, sig=0.80){
         # Convert data to numeric in order to run correlations
         # Convert to factor first to keep the integrity of the data - 
         # Each value will become a number rather than turn into NA
@@ -188,25 +171,26 @@ cm.dt <- table(dt.preds, tem.dataCSV.test$bugs)
 cm.dt
 
 accuracy <- sum(diag(cm.dt)) / sum(cm.dt)
-accuracy
+accuracy # 0.822381
 error.dt.test <- 1 - sum(diag(cm.dt)) / sum(cm.dt)
-error.dt.test
+error.dt.test # 0.177619
 
 class(tem.dataCSV.test$bugs)
 dt.preds <- as.numeric(dt.preds)
 class(dt.preds)
 roc.accuracy <- roc(tem.dataCSV.test$bugs, dt.preds)
 print(roc.accuracy)
-plot(roc.accuracy)
-# The area under the curve is 0.7228
-# Other statistics
+plot(roc.accuracy) # The area under the curve is 0.6632
+
+################################ Other statistics ##############################
 # inspired by: https://towardsdatascience.com/accuracy-precision-recall-or-f1-331fb37c5cb9 
+################################################################################
 precision <- cm.dt[1, 1]/sum(cm.dt[,1])
-precision
+precision # 0.836077
 recall <- cm.dt[1, 1]/sum(cm.dt[1,])
-recall
+recall # 0.9754715
 f1 <- 2 * ((precision * recall) / (precision + recall))
-f1
+f1 # 0.9004112
 
 ################Trying with only the variables with correlation ################
 ########################Searching for over-fitting again #######################
@@ -234,25 +218,25 @@ cm.dt <- table(dt.preds, tem.dataCSV.train.SMOTE$bugs)
 cm.dt
 
 accuracy <- sum(diag(cm.dt)) / sum(cm.dt)
-accuracy # 0.8270894
+accuracy # 0.7911654
 error.dt.test <- 1 - sum(diag(cm.dt)) / sum(cm.dt)
-error.dt.test # 0.1729106
+error.dt.test # 0.2088346
 
 class(tem.dataCSV.train.SMOTE$bugs)
 dt.preds <- as.numeric(dt.preds)
 class(dt.preds)
 roc.accuracy <- roc(tem.dataCSV.train.SMOTE$bugs, dt.preds)
-print(roc.accuracy)
+print(roc.accuracy) # The area under the curve is 0.7903
 plot(roc.accuracy)
-# The area under the curve is 0.8271
-# Other statistics
+################################ Other statistics ##############################
 # inspired by: https://towardsdatascience.com/accuracy-precision-recall-or-f1-331fb37c5cb9 
+################################################################################
 precision <- cm.dt[1, 1]/sum(cm.dt[,1])
-precision # 0.807824
+precision # 0.8333475
 recall <- cm.dt[1, 1]/sum(cm.dt[1,])
-recall # 0.8406463
+recall # 0.7742421
 f1 <- 2 * ((precision * recall) / (precision + recall))
-f1 # 0.8239084
+f1 # 0.8027082
 ############################### For test dataset ###############################
 # Use the type = "class" for a classification tree!
 dt.preds <- predict(dt, tem.dataCSV.test, type = "class")
@@ -266,9 +250,9 @@ cm.dt <- table(dt.preds, tem.dataCSV.test$bugs)
 cm.dt
 
 accuracy <- sum(diag(cm.dt)) / sum(cm.dt)
-accuracy # 0.8094262
+accuracy # 0.822381
 error.dt.test <- 1 - sum(diag(cm.dt)) / sum(cm.dt)
-error.dt.test # 0.1905738
+error.dt.test # 0.177619
 
 class(tem.dataCSV.test$bugs)
 dt.preds <- as.numeric(dt.preds)
@@ -276,15 +260,15 @@ class(dt.preds)
 roc.accuracy <- roc(tem.dataCSV.test$bugs, dt.preds)
 print(roc.accuracy)
 plot(roc.accuracy)
-# The area under the curve is 0.6939
-# Other statistics
+################################ Other statistics ##############################
 # inspired by: https://towardsdatascience.com/accuracy-precision-recall-or-f1-331fb37c5cb9 
+################################################################################
 precision <- cm.dt[1, 1]/sum(cm.dt[,1])
-precision # 0.8194593
+precision # 0.836077
 recall <- cm.dt[1, 1]/sum(cm.dt[1,])
-recall # 0.9785472
+recall #  0.9754715
 f1 <- 2 * ((precision * recall) / (precision + recall))
-f1 # 0.8919652
+f1 # 0.9004112
 ################Trying with only the variables with correlation ################
 # According to the post: 
 # https://machinelearningmastery.com/combine-oversampling-and-undersampling-for-imbalanced-classification/
@@ -364,21 +348,21 @@ dt.pred.probs
 cm.dt <- table(dt.preds, tem.dataCSV.test$bugs)
 cm.dt
 accuracy <- sum(diag(cm.dt)) / sum(cm.dt)
-accuracy # 0.653347
+accuracy # 0.689619
 error.dt.test <- 1 - sum(diag(cm.dt)) / sum(cm.dt)
-error.dt.test # 0.346653
+error.dt.test # 0.310381
 class(tem.dataCSV.test$bugs)
 dt.preds <- as.numeric(dt.preds)
 class(dt.preds)
 roc.accuracy <- roc(tem.dataCSV.test$bugs, dt.preds)
-print(roc.accuracy) # 0.7007
+print(roc.accuracy) # 0.7001
 plot(roc.accuracy)
 precision <- cm.dt[1, 1]/sum(cm.dt[,1])
-precision # 0.6492351
+precision # 0.6887148
 recall <- cm.dt[1, 1]/sum(cm.dt[1,])
-recall # 0.9843581
+recall # 0.9830149
 f1 <- 2 * ((precision * recall) / (precision + recall))
-f1 # 0.7824223
+f1 # 0.8099598
 
 ############################ BOTH + SMOTE + CORRELATION ########################
 set.seed(2987465)
@@ -444,21 +428,21 @@ dt.pred.probs
 cm.dt <- table(dt.preds, tem.dataCSV.test$bugs)
 cm.dt
 accuracy <- sum(diag(cm.dt)) / sum(cm.dt)
-accuracy # 0.704235
+accuracy # 0.6955238
 error.dt.test <- 1 - sum(diag(cm.dt)) / sum(cm.dt)
-error.dt.test # 0.295765
+error.dt.test # 0.3044762
 class(tem.dataCSV.test$bugs)
 dt.preds <- as.numeric(dt.preds)
 class(dt.preds)
 roc.accuracy <- roc(tem.dataCSV.test$bugs, dt.preds)
-print(roc.accuracy) # 0.7067
+print(roc.accuracy) # 0.6951
 plot(roc.accuracy)
 precision <- cm.dt[1, 1]/sum(cm.dt[,1])
-precision # 0.7040199
+precision # 0.6955573
 recall <- cm.dt[1, 1]/sum(cm.dt[1,])
-recall # 0.9831098
+recall # 0.9822154
 f1 <- 2 * ((precision * recall) / (precision + recall))
-f1 # 0.8204809
+f1 # 0.8143977
 
 ############################ BOTH + SMOTE + ALL ########################
 set.seed(2987465)
@@ -517,21 +501,21 @@ dt.pred.probs
 cm.dt <- table(dt.preds, tem.dataCSV.test$bugs)
 cm.dt
 accuracy <- sum(diag(cm.dt)) / sum(cm.dt)
-accuracy # 0.7563183
+accuracy # 0.728
 error.dt.test <- 1 - sum(diag(cm.dt)) / sum(cm.dt)
-error.dt.test # 0.2436817
+error.dt.test # 0.272
 class(tem.dataCSV.test$bugs)
 dt.preds <- as.numeric(dt.preds)
 class(dt.preds)
 roc.accuracy <- roc(tem.dataCSV.test$bugs, dt.preds)
-print(roc.accuracy) # 0.7277
+print(roc.accuracy) # 0.7109
 plot(roc.accuracy)
 precision <- cm.dt[1, 1]/sum(cm.dt[,1])
-precision # 0.7588047
+precision # 0.7294724
 recall <- cm.dt[1, 1]/sum(cm.dt[1,])
-recall # 0.9836292
+recall # 0.9828968
 f1 <- 2 * ((precision * recall) / (precision + recall))
-f1 # 0.8567125
+f1 # 0.8374317
 
 ################################################################################
 #

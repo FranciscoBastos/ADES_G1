@@ -57,7 +57,6 @@ dim(dataCSV)
 
 dataCSV <- na.omit(dataCSV)
 
-
 ###############################Cleaning the data ###############################
 # How to correct the data test information, when we know that the data is 
 # unbalanced?
@@ -75,30 +74,6 @@ dataCSV <- na.omit(dataCSV)
 # https://rpubs.com/ZardoZ/SMOTE_FRAUD_DETECTION
 #
 ################################################################################
-##################### Analyze our data set and fix unbalanced ##################
-
-suppressMessages(library(plm)) # to remove note about dependencies
-is.pbalanced(tem.dataCSV)
-# Is the data set balanced?
-# $ FALSE
-# The data set is not balanced!
-
-suppressMessages(library(tidyverse))
-
-tem.dataCSV.balanced <- make.pbalanced(tem.dataCSV,
-                                       balance.type = c("fill"))
-
-class(tem.dataCSV.balanced$bugs)
-
-# Turn bugs logical column into a integer value of 1 or 0.
-tem.dataCSV.balanced$bugs <-
-  as.integer(as.logical(tem.dataCSV.balanced$bugs))
-
-is.pbalanced(tem.dataCSV.balanced)
-# Is the data set balanced?
-# $ TRUE
-# The data set is balanced!
-
 # Re-sample the data in half
 tem.dataCSV.balanced.sample <- tem.dataCSV.balanced[1:35000, ]
 tem.dataCSV.balanced.sample <- na.omit(tem.dataCSV.balanced.sample)
@@ -115,7 +90,7 @@ table(tem.dataCSV.balanced.sample$bugs)
 barplot(prop.table(table(tem.dataCSV.balanced.sample$bugs)),
         col = rainbow(2),
         ylim = c(0, 1),
-        main = "Class Distribution")
+        main = "Bug class distribution")
 
 ################################################################################
 # We are going to try with over, under an both sampling as well as with 
@@ -135,7 +110,6 @@ tem.dataCSV.test <- tem.dataCSV.balanced.sample[-index,]
 dim(tem.dataCSV.train)
 dim(tem.dataCSV.test)
 
-
 balanced.data.over.sampling <- 
   ovun.sample(bugs~., data=tem.dataCSV.train, 
               method = "over")$data
@@ -145,7 +119,7 @@ table(balanced.data.over.sampling$bugs)
 barplot(prop.table(table(balanced.data.over.sampling$bugs)),
         col = rainbow(2),
         ylim = c(0, 1),
-        main = "Class Distribution over sampling")
+        main = "Bug class distribution over sampling")
 
 #################################### Under #####################################
 set.seed(2987465)
@@ -166,7 +140,7 @@ table(balanced.data.under.sampling$bugs)
 barplot(prop.table(table(balanced.data.under.sampling$bugs)),
         col = rainbow(2),
         ylim = c(0, 1),
-        main = "Class Distribution under sampling")
+        main = "Bug class distribution under sampling")
 
 ################################### Both #######################################
 set.seed(2987465)
@@ -187,7 +161,7 @@ table(balanced.data.both.sampling$bugs)
 barplot(prop.table(table(balanced.data.both.sampling$bugs)),
         col = rainbow(2),
         ylim = c(0, 1),
-        main = "Class Distribution over and under sampling")
+        main = "Bug class distribution over and under sampling")
 ###########################Divide our balanced data ############################
 # Trying with: both
 #
@@ -224,4 +198,4 @@ roc.accuracy <- roc(tem.dataCSV.test$bugs, dt.preds)
 print(roc.accuracy)
 plot(roc.accuracy)
 # The are under the curve improved a lot!
-# Area under the curve:  0.5377
+# Area under the curve:  0.5
