@@ -269,12 +269,14 @@ plot(importance)
 # define the control using a random forest selection function
 control <- rfeControl(functions = treebagFuncs,
                       method = "repeatedcv",
-                      repeats = 5, # number of repeats
-                      number = 10)
+                      repeats = 3, # number of repeats
+                      number = 10,
+                      verbose = TRUE)
+subsets <- c(1:ncol(train.smote.both), 10, 15, 20, 25)
 # run the RFE algorithm
 results <- rfe(x = X_train, 
                y = y_train, 
-               sizes = c(1:ncol(train.smote.both)), 
+               sizes = subsets, 
                rfeControl = control)
 # summarize the results
 print(results)
@@ -282,36 +284,56 @@ print(results)
 predictors(results)
 # plot the results
 plot(results, type=c("g", "o"))
+variables <- data.frame(results$optVariables) # STORE THE VARIABLES
+variables
+# TODO TRAIN THE MODELS NOW THAT I KNOW THE VARIABLES 
 ################################################################################
 
 class(train.smote.both$bugs)
 
 train.smote.both$bugs <- as.numeric(train.smote.both$bugs)
 
-lm.model <- lm(bugs ~ CC + CCL + CCO + CI + CLC + CLLC + LDC + LLDC + LCOM5 + 
-                 NL + NLE + WMC + CBO + CBOI + NII + NOI + RFC + AD + 
-                 CD + CLOC + DLOC + PDA + PUA + TCD + TCLOC + DIT + NOA + 
-                 NOC + NOD + NOP + LLOC + LOC + NA. + NG + NLA + NLG + NLM + 
-                 NLPA + NLPM + NLS + NM + NOS + NPA + NPM + NS + TLLOC + TLOC + 
-                 TNA + TNG + TNLA + TNLG + TNLM + TNLPA + TNLPM + TNLS + TNM + 
-                 TNOS + TNPA + TNPM + TNS + WarningBlocker + WarningCritical + 
-                 WarningInfo + WarningMajor + WarningMinor + Android.Rules + 
-                 Basic.Rules + Brace.Rules + Clone.Implementation.Rules + 
-                 Clone.Metric.Rules + Code.Size.Rules + Cohesion.Metric.Rules + 
-                 Comment.Rules + Complexity.Metric.Rules + 
-                 Controversial.Rules + Coupling.Metric.Rules + 
-                 Coupling.Rules + Design.Rules + 
-                 Documentation.Metric.Rules + Empty.Code.Rules + 
-                 Finalizer.Rules + Import.Statement.Rules + 
-                 Inheritance.Metric.Rules + J2EE.Rules + JUnit.Rules + 
-                 Jakarta.Commons.Logging.Rules + Java.Logging.Rules + 
-                 JavaBean.Rules + MigratingToJUnit4.Rules + Migration.Rules + 
-                 Migration13.Rules + Migration14.Rules + 
-                 Migration15.Rules + Naming.Rules + Optimization.Rules + 
-                 Security.Code.Guideline.Rules + Size.Metric.Rules + 
-                 Strict.Exception.Rules + String.and.StringBuffer.Rules + 
-                 Type.Resolution.Rules + Unnecessary.and.Unused.Code.Rules + 
-                 Vulnerability.Rules,
+train.smote.both$Strict.Exception.Rules
+
+lm.model <- lm(bugs ~ NOI,
+               RFC,
+               CBO,
+               WMC,
+               Coupling.Metric.Rules,
+               JUnit.Rules, Strict.Exception.Rules,
+               NII,
+               CBOI,
+               LLOC,
+               TLLOC,
+               NA.,
+               NOA,
+               TNOS,
+               NLE,
+               TLOC,
+               Complexity.Metric.Rules,
+               LOC,
+               DIT,
+               NL,
+               NOS,
+               WarningMajor,
+               WarningMinor,
+               Unnecessary.and.Unused.Code.Rules,
+               WarningInfo,
+               TNA,
+               NLM,
+               Type.Resolution.Rules,
+               Clone.Metric.Rules,
+               PUA,
+               NM,
+               Documentation.Metric.Rules,
+               Inheritance.Metric.Rules,
+               LDC,
+               NLA,
+               LLDC,
+               NG,
+               TNLS,
+               CI,
+               Brace.Rules,
                data = train.smote.both)
 
 lm.pred <- predict(lm.model, tem.dataCSV.test)
