@@ -178,7 +178,9 @@ corr_simple()
 #
 ################################################################################
 set.seed(2987465)
-# createDataPartition() function from the caret package to split the original dataset into a training and testing set and split data into training (80%) and testing set (20%)
+# createDataPartition() function from the caret package to split the original 
+# data set into a training and testing set and split data into training 
+# (80%) and testing set (20%)
 parts = createDataPartition(tem.dataCSV.balanced.sample$bugs, 
                             p = 0.70, 
                             list = FALSE)
@@ -187,10 +189,6 @@ tem.dataCSV.train = tem.dataCSV.balanced.sample[parts, ]
 tem.dataCSV.test = tem.dataCSV.balanced.sample[-parts, ]
 X_train = tem.dataCSV.train[,-ncol(tem.dataCSV.balanced.sample)]
 y_train = tem.dataCSV.train[,ncol(tem.dataCSV.balanced.sample)]
-# index <- sample(1:nrow(tem.dataCSV.balanced.sample),
-#                 as.integer(0.7*nrow(tem.dataCSV.balanced.sample)))
-# tem.dataCSV.train <- tem.dataCSV.balanced.sample[index,]
-# tem.dataCSV.test <- tem.dataCSV.balanced.sample[-index,]
 
 dim(tem.dataCSV.train)
 dim(tem.dataCSV.test)
@@ -285,7 +283,7 @@ predictors(results)
 # plot the results
 plot(results, type=c("g", "o"))
 variables <- data.frame(results$optVariables) # STORE THE VARIABLES
-variables
+variables$results.optVariables
 # TODO TRAIN THE MODELS NOW THAT I KNOW THE VARIABLES 
 ################################################################################
 
@@ -293,47 +291,20 @@ class(train.smote.both$bugs)
 
 train.smote.both$bugs <- as.numeric(train.smote.both$bugs)
 
-train.smote.both$Strict.Exception.Rules
-
-lm.model <- lm(bugs ~ NOI,
-               RFC,
-               CBO,
-               WMC,
-               Coupling.Metric.Rules,
-               JUnit.Rules, Strict.Exception.Rules,
-               NII,
-               CBOI,
-               LLOC,
-               TLLOC,
-               NA.,
-               NOA,
-               TNOS,
-               NLE,
-               TLOC,
-               Complexity.Metric.Rules,
-               LOC,
-               DIT,
-               NL,
-               NOS,
-               WarningMajor,
-               WarningMinor,
-               Unnecessary.and.Unused.Code.Rules,
-               WarningInfo,
-               TNA,
-               NLM,
-               Type.Resolution.Rules,
-               Clone.Metric.Rules,
-               PUA,
-               NM,
-               Documentation.Metric.Rules,
-               Inheritance.Metric.Rules,
-               LDC,
-               NLA,
-               LLDC,
-               NG,
-               TNLS,
-               CI,
-               Brace.Rules,
+lm.model <- lm(bugs ~ NOI + RFC + CBO + WMC + Coupling.Metric.Rules + 
+                 JUnit.Rules + Strict.Exception.Rules + NII + CBOI + LLOC +
+                 TLLOC + NA. + NOA + TNOS + NLE + TLOC + 
+                 Complexity.Metric.Rules + LOC + DIT + NL + NOS + 
+                 WarningMajor + WarningMinor + 
+                 Unnecessary.and.Unused.Code.Rules + WarningInfo + TNA + NLM + 
+                 Type.Resolution.Rules + Clone.Metric.Rules + PUA + NM + 
+                 Documentation.Metric.Rules + Inheritance.Metric.Rules + 
+                 LDC + NLA + LLDC + NG + TNLS + CI + Brace.Rules + 
+                 String.and.StringBuffer.Rules + CD + Cohesion.Metric.Rules + 
+                 AD + Android.Rules + Basic.Rules + CC + CCL + CCO + CLC + 
+                 CLLC + CLOC + Clone.Implementation.Rules +
+                 Controversial.Rules + Design.Rules + DLOC + Empty.Code.Rules +
+                 Finalizer.Rules + Import.Statement.Rules + J2EE.Rules, 
                data = train.smote.both)
 
 lm.pred <- predict(lm.model, tem.dataCSV.test)
@@ -344,19 +315,19 @@ class(tem.dataCSV.test$bugs)
 lm.pred <- as.numeric(lm.pred)
 class(lm.pred)
 roc.accuracy <- roc(tem.dataCSV.test$bugs, lm.pred)
-print(roc.accuracy) # 0.8006
+print(roc.accuracy) # 0.7807
 plot(roc.accuracy)
 
 lm.mad <- sum(abs(lm.pred - tem.dataCSV.test$bugs))/length(lm.pred)
-lm.mad # 1.329709
+lm.mad # 1.564324
 lm.mse <- sum((lm.pred - tem.dataCSV.test$bugs)^2)/length(lm.pred)
-lm.mse # 1.83478
+lm.mse # 2.547035
 
 d <- tem.dataCSV.test$bugs - lm.pred
 lm.mae <- mean(abs(d))
-lm.mae # 1.329709
+lm.mae # 1.564324
 lm.rmse <- sqrt(mean(d^2))
-lm.rmse # 1.354541
+lm.rmse # 1.595943
 
 ################################################################################
 #

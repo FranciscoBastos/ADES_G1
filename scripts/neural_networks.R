@@ -9,8 +9,7 @@ install.packages('caret')
 install.packages('ROSE')
 install.packages("gdata", "tree", "ROCR")
 install.packages("gdata")
-install.packages("randomForest")
-
+install.packages("RandomForestsGLS", dependencies = TRUE)
 
 library("gdata")
 library("caret")
@@ -27,7 +26,6 @@ library("rpart.plot")
 library("neuralnet")
 library("party")
 library("partykit")
-library("DMwR")
 library("DMwR2")
 library("smotefamily")
 library("ROSE")
@@ -38,7 +36,8 @@ library("tidyverse")
 library("leaps")
 library("pROC")
 library("ggplot2")
-library("randomForest")
+library("randomForestExplainer")
+library("randomForestSRC")
 library("keras")
 library("mlbench")
 library("magrittr")
@@ -48,17 +47,38 @@ use_condaenv("r-tensorflow")
 
 require(caTools)
 
-suppressPackageStartupMessages(c(library(caret),library(corrplot),library(smotefamily)))
-
-if(!require('DMwR')) {
-  install.packages('DMwR')
-  library('DMwR')
-}
+suppressPackageStartupMessages(c(library(caret),
+                                 library(corrplot),
+                                 library(smotefamily)))
 
 ################################Load data#######################################
 
 dataCSV <- read.csv("./data/dev.csv")
 dataCSV <- na.omit(dataCSV)
+# Re-sample the data in 55000 samples
+# The following variables have a variance of 0
+tem.dataCSV.balanced.sample <- subset(dataCSV, select=-c(ID,
+                                                         Parent,
+                                                         Component,
+                                                         Line,
+                                                         Column,
+                                                         EndLine,
+                                                         EndColumn,
+                                                         WarningBlocker, 
+                                                         Code.Size.Rules, 
+                                                         Comment.Rules, 
+                                                         Coupling.Rules, 
+                                                         MigratingToJUnit4.Rules,
+                                                         Migration13.Rules,
+                                                         Migration14.Rules,
+                                                         Migration15.Rules,
+                                                         Vulnerability.Rules))
+tem.dataCSV.balanced.sample <- na.omit(tem.dataCSV.balanced.sample)
+tem.dataCSV.balanced.sample <- tem.dataCSV.balanced.sample[1:55000, ]
+tem.dataCSV.balanced.sample$MigratingToJUnit4.Rules # should be NULL
+# Turn bugs logical column into a integer value of 1 or 0.
+tem.dataCSV.balanced.sample$bugs <-
+  as.integer(as.logical(tem.dataCSV.balanced.sample$bugs))
 
 ###############################Cleaning the data ###############################
 # How to correct the data test information, when we know that the data is 
@@ -77,12 +97,6 @@ dataCSV <- na.omit(dataCSV)
 # https://rpubs.com/ZardoZ/SMOTE_FRAUD_DETECTION
 #
 ##################### Analyze our data set and fix unbalanced ##################
-# Re-sample the data in 55000 samples
-tem.dataCSV.balanced.sample <- dataCSV[1:55000, -c(1:7)]
-tem.dataCSV.balanced.sample <- na.omit(tem.dataCSV.balanced.sample)
-# Turn bugs logical column into a integer value of 1 or 0.
-tem.dataCSV.balanced.sample$bugs <-
-  as.integer(as.logical(tem.dataCSV.balanced.sample$bugs))
 
 # Visualize the data
 barplot(prop.table(table(tem.dataCSV.balanced.sample$bugs)),
@@ -124,6 +138,14 @@ colnames(tem.dataCSV.train.SMOTE) [ncol(tem.dataCSV.train.SMOTE)] <- "bugs"
 tem.dataCSV.train.SMOTE$bugs <- as.factor(tem.dataCSV.train.SMOTE$bugs)
 table(tem.dataCSV.train.SMOTE$bugs)
 ################################### Both #######################################
+################################### Both ######################################
+# To decrease the size of the data-set we should use under
+################################################################################
+# Needed this to reduce the size of the data set
+# https://www.statology.org/smote-in-r/
+################################################################################
+tem.dataCSV.train.SMOTE <- tem.dataCSV.train.SMOTE[1:55000, ]
+################################################################################
 
 train.smote.both <- 
   ovun.sample(bugs~., data=tem.dataCSV.train.SMOTE, 
@@ -154,42 +176,34 @@ tem.dataCSV.test %<>% mutate_if(is.integer, as.numeric)
 train.smote.both.norm <- scale(train.smote.both, scale = TRUE)
 
 ########################### Preliminary setup ##################################
-neural.net.bugs <- neuralnet(bugs ~ CC + CCL + CCO + CI + CLC + CLLC + LDC + 
-                               LLDC + LCOM5 + NL + NLE + WMC + CBO + CBOI +
-                               NII + NOI + RFC + AD + CD + CLOC + DLOC + PDA +
-                               PUA + TCD + TCLOC + DIT + NOA + NOC + NOD + NOP + 
-                               LLOC + LOC + NA.  + NG + NLA + NLG + NLM  +
-                               NLPA + NLPM + NLS + NM + NOS + NPA + NPM +
-                               NS + TLLOC + TLOC + TNA + TNG  + TNLA + TNLG +
-                               TNLM + TNLPA + TNLPM + TNLS + TNM + TNOS +
-                               TNPA + TNPM + TNS + WarningBlocker + 
-                               WarningCritical + WarningInfo + WarningMajor +
-                               WarningMinor + Android.Rules + Basic.Rules + 
-                               Brace.Rules + Clone.Implementation.Rules +
-                               Clone.Metric.Rules + Code.Size.Rules +
-                               Cohesion.Metric.Rules + Comment.Rules +
-                               Complexity.Metric.Rules + Controversial.Rules +
-                               Coupling.Metric.Rules + Coupling.Rules +
-                               Design.Rules + Documentation.Metric.Rules +
-                               Empty.Code.Rules + Finalizer.Rules +
-                               Import.Statement.Rules + 
-                               Inheritance.Metric.Rules + J2EE.Rules +
-                               JUnit.Rules + Jakarta.Commons.Logging.Rules +
-                               Java.Logging.Rules + Migration13.Rules +
-                               Migration14.Rules + Migration15.Rules +
-                               JavaBean.Rules + MigratingToJUnit4.Rules +
-                               Migration.Rules + Naming.Rules +
-                               Optimization.Rules + Type.Resolution.Rules +
+# Start at 10 nodes and iterate 5 to 5 until 100,
+# With 2 hidden layers maximum
+################################################################################
+neural.net.bugs <- neuralnet(bugs ~ NOI + RFC + CBO + WMC + 
+                               Coupling.Metric.Rules + JUnit.Rules + 
+                               Strict.Exception.Rules + NII + CBOI + LLOC +
+                               TLLOC + NA. + NOA + TNOS + NLE + TLOC + 
+                               Complexity.Metric.Rules + LOC + DIT +
+                               NL + NOS + WarningMajor + WarningMinor + 
                                Unnecessary.and.Unused.Code.Rules + 
-                               Vulnerability.Rules + 
-                               Security.Code.Guideline.Rules + 
-                               Size.Metric.Rules + Strict.Exception.Rules + 
-                               String.and.StringBuffer.Rules,
+                               WarningInfo + TNA + NLM + 
+                               Type.Resolution.Rules + Clone.Metric.Rules +
+                               PUA + NM + Documentation.Metric.Rules +
+                               Inheritance.Metric.Rules + LDC + NLA +
+                               LLDC + NG + TNLS + CI + Brace.Rules + 
+                               String.and.StringBuffer.Rules + CD +
+                               Cohesion.Metric.Rules + AD + Android.Rules +
+                               Basic.Rules + CC + CCL + CCO + CLC + 
+                               CLLC + CLOC + Clone.Implementation.Rules +
+                               Controversial.Rules + Design.Rules +
+                               DLOC + Empty.Code.Rules +
+                               Finalizer.Rules + Import.Statement.Rules +
+                               J2EE.Rules,
                              data = train.smote.both.norm,
-                             hidden = c(12,7), # Start at 10 - 5 - 5 - 100, with 2 hidden layers.
+                             hidden = c(10, 3),
                              linear.output = FALSE,
                              lifesign = 'full',
-                             rep = 5)
+                             rep = 3)
 ########################## Plot for better data visualization ##################
 plot(neural.net.bugs, col.hidden = 'darkgreen',
      col.hidden.synapse = 'darkgreen', 

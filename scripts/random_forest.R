@@ -38,7 +38,7 @@ library("tidyverse")
 library("leaps")
 library("pROC")
 library("ggplot2")
-library("randomForest")
+library("RandomForestsGLS")
 
 
 require(caTools)
@@ -73,8 +73,26 @@ dataCSV <- read.csv("./data/dev.csv")
 ################################################################################
 ##################### Analyze our data set and fix unbalanced ##################
 # Re-sample the data in 55000 samples
-tem.dataCSV.balanced.sample <- dataCSV[1:55000, -c(1:7)]
+# The following variables have a variance of 0
+tem.dataCSV.balanced.sample <- subset(dataCSV, select=-c(ID,
+                                                         Parent,
+                                                         Component,
+                                                         Line,
+                                                         Column,
+                                                         EndLine,
+                                                         EndColumn,
+                                                         WarningBlocker, 
+                                                         Code.Size.Rules, 
+                                                         Comment.Rules, 
+                                                         Coupling.Rules, 
+                                                         MigratingToJUnit4.Rules,
+                                                         Migration13.Rules,
+                                                         Migration14.Rules,
+                                                         Migration15.Rules,
+                                                         Vulnerability.Rules))
 tem.dataCSV.balanced.sample <- na.omit(tem.dataCSV.balanced.sample)
+tem.dataCSV.balanced.sample <- tem.dataCSV.balanced.sample[1:55000, ]
+tem.dataCSV.balanced.sample$MigratingToJUnit4.Rules # should be NULL
 # Turn bugs logical column into a integer value of 1 or 0.
 tem.dataCSV.balanced.sample$bugs <-
   as.integer(as.logical(tem.dataCSV.balanced.sample$bugs))
@@ -127,29 +145,20 @@ barplot(prop.table(table(train.smote.both$bugs)),
         main = "Bug class distribution (SMOTE, Over, Under sampeling)")
 
 ###################### Apply the random forest algorithm #######################
-rf <- rfsrc(bugs ~ CC + CCL + CCO + CI + CLC + CLLC + LDC + LLDC + LCOM5 + NL + 
-              NLE + WMC + CBO + CBOI + NII + NOI + RFC + AD + CD + CLOC + 
-              DLOC + PDA + PUA + TCD + TCLOC + DIT + NOA + NOC + NOD + NOP + 
-              LLOC + LOC + NA.  + NG + NLA + NLG + NLM  + NLPA + NLPM + NLS +
-              NM + NOS + NPA + NPM + NS + TLLOC + TLOC + TNA + TNG  + TNLA +
-              TNLG  + TNLM + TNLPA + TNLPM + TNLS + TNM + TNOS + TNPA+ TNPM +
-              TNS + WarningBlocker + WarningCritical + WarningInfo + 
-              WarningMajor + WarningMinor + Android.Rules + Basic.Rules + 
-              Brace.Rules + Clone.Implementation.Rules + Clone.Metric.Rules +
-              Code.Size.Rules + Cohesion.Metric.Rules + Comment.Rules +
-              Complexity.Metric.Rules + Controversial.Rules +
-              Coupling.Metric.Rules + Coupling.Rules + Design.Rules +
-              Documentation.Metric.Rules + Empty.Code.Rules +
-              Finalizer.Rules + Import.Statement.Rules +
-              Inheritance.Metric.Rules + J2EE.Rules + JUnit.Rules +
-              Jakarta.Commons.Logging.Rules + Java.Logging.Rules +
-              Migration13.Rules + Migration14.Rules + Migration15.Rules +
-              JavaBean.Rules + MigratingToJUnit4.Rules + Migration.Rules +
-              Naming.Rules + Optimization.Rules +
-              Type.Resolution.Rules + Unnecessary.and.Unused.Code.Rules +
-              Vulnerability.Rules + Security.Code.Guideline.Rules + 
-              Size.Metric.Rules + Strict.Exception.Rules + 
-              String.and.StringBuffer.Rules,
+rf <- rfsrc(bugs ~ NOI + RFC + CBO + WMC + Coupling.Metric.Rules + 
+              JUnit.Rules + Strict.Exception.Rules + NII + CBOI + LLOC +
+              TLLOC + NA. + NOA + TNOS + NLE + TLOC + 
+              Complexity.Metric.Rules + LOC + DIT + NL + NOS + 
+              WarningMajor + WarningMinor + 
+              Unnecessary.and.Unused.Code.Rules + WarningInfo + TNA + NLM + 
+              Type.Resolution.Rules + Clone.Metric.Rules + PUA + NM + 
+              Documentation.Metric.Rules + Inheritance.Metric.Rules + 
+              LDC + NLA + LLDC + NG + TNLS + CI + Brace.Rules + 
+              String.and.StringBuffer.Rules + CD + Cohesion.Metric.Rules + 
+              AD + Android.Rules + Basic.Rules + CC + CCL + CCO + CLC + 
+              CLLC + CLOC + Clone.Implementation.Rules +
+              Controversial.Rules + Design.Rules + DLOC + Empty.Code.Rules +
+              Finalizer.Rules + Import.Statement.Rules + J2EE.Rules,
             data = train.smote.both,
             method = "class")
 rf
@@ -202,12 +211,28 @@ rf.pred.probs
 ################################################################################
 dataCSVComp <- read.csv("data/comp.csv")
 dataCSVComp <- na.omit(dataCSVComp)
-tem.dataCSVComp <- dataCSVComp[-c(1:7)]
+tem.dataCSVComp <- subset(dataCSVComp, select=-c(ID,
+                                             Parent,
+                                             Component,
+                                             Line,
+                                             Column,
+                                             EndLine,
+                                             EndColumn,
+                                             WarningBlocker, 
+                                             Code.Size.Rules, 
+                                             Comment.Rules, 
+                                             Coupling.Rules, 
+                                             MigratingToJUnit4.Rules,
+                                             Migration13.Rules,
+                                             Migration14.Rules,
+                                             Migration15.Rules,
+                                             Vulnerability.Rules))
 
 #######################Decision tree with competition data######################
 
 # Prediction
 predict.bug <- predict(rf, tem.dataCSVComp, type = 'prob')
+predict.bug
 predict.bug$xvar
 predict.bug$predicted
 
@@ -218,4 +243,4 @@ df.predict.bug
 submission <- df.predict.bug[ , ncol(df.predict.bug), drop = FALSE] # apply ncol & drop
 submission
 
-write.csv(submission, "submissions/decision_tree_formated.csv")
+write.csv(submission, "submissions/random_forest.csv")
