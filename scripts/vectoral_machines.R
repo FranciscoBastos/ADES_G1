@@ -10,7 +10,9 @@ install.packages('ROSE')
 install.packages("gdata", "tree", "ROCR")
 install.packages("gdata")
 install.packages("RandomForestsGLS", dependencies = TRUE)
+install.packages("e1071")
 
+library("e1071")
 library("gdata")
 library("caret")
 library("ROCR")
@@ -41,6 +43,10 @@ library("randomForestSRC")
 library("keras")
 library("mlbench")
 library("magrittr")
+library("e1071")
+library("rgl")
+library("misc3d")
+
 
 install_tensorflow()
 use_condaenv("r-tensorflow")
@@ -103,6 +109,9 @@ barplot(prop.table(table(tem.dataCSV.balanced.sample$bugs)),
         col = rainbow(2),
         ylim = c(0, 1),
         main = "Class distribution")
+############################### Remove the outliers ############################
+boxplot(tem.dataCSV.balanced.sample)
+################################################################################
 ############################### SMOTE function #################################
 # Divide our balanced data 
 # Trying with: SMOTE
@@ -160,60 +169,24 @@ barplot(prop.table(table(train.smote.both$bugs)),
         ylim = c(0, 1),
         main = "Class distribution (SMOTE, Over, Under)")
 
-##################### Apply the neural networks algorithm ######################
-# Verify if the all the variables are factors because the neural networks
-# algorithms only work with numeric values
-str(train.smote.both, list.len=ncol(train.smote.both))
-# Change all variables to numeric
-train.smote.both %<>% mutate_if(is.factor, as.numeric)
-str(tem.dataCSV.test, list.len=ncol(tem.dataCSV.test))
-# Change all variables to numeric
-tem.dataCSV.test %<>% mutate_if(is.integer, as.numeric)
-###################### Normalize the training data set #########################
-# https://www.geeksforgeeks.org/how-to-normalize-and-standardize-data-in-r/
-# Custom function to implement min max scaling
-# train.smote.both.norm <- scale(train.smote.both, scale = TRUE)
-minmaxnorm <- function(x) {
-  return ((x - min(x)) / (max(x) - min(x)))
-}
+##################################### SVM ######################################
+svm.model = svm(bugs ~ NOI + RFC + CBO + WMC + Coupling.Metric.Rules + 
+                  JUnit.Rules + Strict.Exception.Rules + NII + CBOI + LLOC +
+                  TLLOC + NA. + NOA + TNOS + NLE + TLOC + 
+                  Complexity.Metric.Rules + LOC + DIT + NL + NOS + 
+                  WarningMajor + WarningMinor + 
+                  Unnecessary.and.Unused.Code.Rules + WarningInfo + TNA + NLM + 
+                  Type.Resolution.Rules + Clone.Metric.Rules + PUA + NM + 
+                  Documentation.Metric.Rules + Inheritance.Metric.Rules + 
+                  LDC + NLA + LLDC + NG + TNLS + CI + Brace.Rules + 
+                  String.and.StringBuffer.Rules + CD + Cohesion.Metric.Rules + 
+                  AD + Android.Rules + Basic.Rules + CC + CCL + CCO + CLC + 
+                  CLLC + CLOC + Clone.Implementation.Rules +
+                  Controversial.Rules + Design.Rules + DLOC + Empty.Code.Rules +
+                  Finalizer.Rules + Import.Statement.Rules + J2EE.Rules,
+                data = train.smote.both, 
+                type = 'C-classification',
+                kernel = 'linear')
 
-train.smote.both.norm <- as.data.frame(lapply(train.smote.both.norm, minmaxnorm))
-
-apply(train.smote.both.norm, 2, min)
-
-apply(train.smote.both.norm, 2, max)
-
-########################### Preliminary setup ##################################
-# Start at 10 nodes and iterate 5 to 5 until 100,
-# With 2 hidden layers maximum
-################################################################################
-neural.net.bugs <- neuralnet(bugs ~ NOI + RFC + CBO + WMC + 
-                               Coupling.Metric.Rules + JUnit.Rules + 
-                               Strict.Exception.Rules + NII + CBOI + LLOC +
-                               TLLOC + NA. + NOA + TNOS + NLE + TLOC + 
-                               Complexity.Metric.Rules + LOC + DIT +
-                               NL + NOS + WarningMajor + WarningMinor + 
-                               Unnecessary.and.Unused.Code.Rules + 
-                               WarningInfo + TNA + NLM + 
-                               Type.Resolution.Rules + Clone.Metric.Rules +
-                               PUA + NM + Documentation.Metric.Rules +
-                               Inheritance.Metric.Rules + LDC + NLA +
-                               LLDC + NG + TNLS + CI + Brace.Rules + 
-                               String.and.StringBuffer.Rules + CD +
-                               Cohesion.Metric.Rules + AD + Android.Rules +
-                               Basic.Rules + CC + CCL + CCO + CLC + 
-                               CLLC + CLOC + Clone.Implementation.Rules +
-                               Controversial.Rules + Design.Rules +
-                               DLOC + Empty.Code.Rules +
-                               Finalizer.Rules + Import.Statement.Rules +
-                               J2EE.Rules,
-                             data = train.smote.both.norm,
-                             err.fct = 'ce', 
-                             likelihood = TRUE)
-
-########################## Plot for better data visualization ##################
-plot(neural.net.bugs, col.hidden = 'darkgreen',
-     col.hidden.synapse = 'darkgreen', 
-     show.weights = F,
-     information = F,
-     fill = 'lightblue')
+################################## Print the SVM ###############################
+plot3d(train.smote.both, col=train.smote.both$both)
