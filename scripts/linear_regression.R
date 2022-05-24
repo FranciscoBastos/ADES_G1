@@ -58,11 +58,11 @@ if(!require('DMwR2')) {
   library('DMwR2')
 }
 
-################################Load data#######################################
+################################ Load data #####################################
 
 dataCSV <- read.csv("./data/dev.csv")
 
-###############################Cleaning the data ###############################
+############################### Cleaning the data ##############################
 # How to correct the data test information, when we know that the data is 
 # unbalanced?
 # 
@@ -106,10 +106,6 @@ tem.dataCSV.balanced.sample$bugs <-
   as.integer(as.logical(tem.dataCSV.balanced.sample$bugs))
 
 class(tem.dataCSV.balanced.sample$bugs)
-
-# Turn bugs logical column into a integer value of 1 or 0.
-tem.dataCSV.balanced.sample$bugs <-
-  as.integer(as.logical(tem.dataCSV.balanced.sample$bugs))
 
 table(tem.dataCSV.balanced.sample$bugs)
 # Are the bugs balanced ?
@@ -180,7 +176,7 @@ corr_simple()
 set.seed(2987465)
 # createDataPartition() function from the caret package to split the original 
 # data set into a training and testing set and split data into training 
-# (80%) and testing set (20%)
+# (70%) and testing set (30%)
 parts = createDataPartition(tem.dataCSV.balanced.sample$bugs, 
                             p = 0.70, 
                             list = FALSE)
@@ -193,7 +189,7 @@ y_train = tem.dataCSV.train[,ncol(tem.dataCSV.balanced.sample)]
 dim(tem.dataCSV.train)
 dim(tem.dataCSV.test)
 dim(X_train)
-dim(y_train)
+dim(y_train) # should be NULL
 
 # The SMOTE function requires the target variable to be numeric
 tem.dataCSV.train$bugs <- as.numeric(tem.dataCSV.train$bugs)
@@ -263,15 +259,21 @@ print(importance)
 # plot importance
 plot(importance)
 ################################################################################
-################################ Feature selection #############################
-# define the control using a random forest selection function
-control <- rfeControl(functions = treebagFuncs,
+############################# Feature selection ################################
+# Define the control using a linear function selection function
+# Change for other functions for classification problems, see the link bellow:
+# http://topepo.github.io/caret/recursive-feature-elimination.html#rfe
+################################################################################
+control <- rfeControl(functions = lmFuncs,
                       method = "repeatedcv",
                       repeats = 3, # number of repeats
                       number = 10,
                       verbose = TRUE)
+
 subsets <- c(1:ncol(train.smote.both), 10, 15, 20, 25)
-# run the RFE algorithm
+################################################################################
+# Run the RFE algorithm
+################################################################################
 results <- rfe(x = X_train, 
                y = y_train, 
                sizes = subsets, 
@@ -284,27 +286,31 @@ predictors(results)
 plot(results, type=c("g", "o"))
 variables <- data.frame(results$optVariables) # STORE THE VARIABLES
 variables$results.optVariables
-# TODO TRAIN THE MODELS NOW THAT I KNOW THE VARIABLES 
 ################################################################################
 
 class(train.smote.both$bugs)
 
 train.smote.both$bugs <- as.numeric(train.smote.both$bugs)
 
-lm.model <- lm(bugs ~ NOI + RFC + CBO + WMC + Coupling.Metric.Rules + 
-                 JUnit.Rules + Strict.Exception.Rules + NII + CBOI + LLOC +
-                 TLLOC + NA. + NOA + TNOS + NLE + TLOC + 
-                 Complexity.Metric.Rules + LOC + DIT + NL + NOS + 
-                 WarningMajor + WarningMinor + 
-                 Unnecessary.and.Unused.Code.Rules + WarningInfo + TNA + NLM + 
-                 Type.Resolution.Rules + Clone.Metric.Rules + PUA + NM + 
-                 Documentation.Metric.Rules + Inheritance.Metric.Rules + 
-                 LDC + NLA + LLDC + NG + TNLS + CI + Brace.Rules + 
-                 String.and.StringBuffer.Rules + CD + Cohesion.Metric.Rules + 
-                 AD + Android.Rules + Basic.Rules + CC + CCL + CCO + CLC + 
-                 CLLC + CLOC + Clone.Implementation.Rules +
-                 Controversial.Rules + Design.Rules + DLOC + Empty.Code.Rules +
-                 Finalizer.Rules + Import.Statement.Rules + J2EE.Rules, 
+lm.model <- lm(bugs ~ TCD + CD +  CLLC + CLC + Finalizer.Rules + CC + 
+                 Strict.Exception.Rules + J2EE.Rules + 
+                 Unnecessary.and.Unused.Code.Rules + 
+                 Clone.Implementation.Rules + AD + Type.Resolution.Rules + 
+                 WarningMajor + Import.Statement.Rules + Naming.Rules +
+                 String.and.StringBuffer.Rules + NLE + WarningCritical +    
+                 WarningMinor + JUnit.Rules + JavaBean.Rules +     
+                 Design.Rules + Controversial.Rules + Optimization.Rules + 
+                 Basic.Rules + Java.Logging.Rules +
+                 Jakarta.Commons.Logging.Rules + Brace.Rules + NLPM + PDA + 
+                 PUA + Security.Code.Guideline.Rules + Migration.Rules +    
+                 Complexity.Metric.Rules + Inheritance.Metric.Rules + NOP + 
+                 NOA + Android.Rules + NLS + 
+                 Coupling.Metric.Rules + NA. + DIT + 
+                 NPA + TNLPM + CBO + 
+                 NG +  NLG + TNLS +
+                 Empty.Code.Rules + NL + NLPA +
+                 TNA + WMC + TNPA +
+                 NOC + RFC + Cohesion.Metric.Rules, 
                data = train.smote.both)
 
 lm.pred <- predict(lm.model, tem.dataCSV.test)
@@ -315,53 +321,25 @@ class(tem.dataCSV.test$bugs)
 lm.pred <- as.numeric(lm.pred)
 class(lm.pred)
 roc.accuracy <- roc(tem.dataCSV.test$bugs, lm.pred)
-print(roc.accuracy) # 0.7807
+print(roc.accuracy) #  0.7808
 plot(roc.accuracy)
 
 lm.mad <- sum(abs(lm.pred - tem.dataCSV.test$bugs))/length(lm.pred)
-lm.mad # 1.564324
+lm.mad # 1.555973
 lm.mse <- sum((lm.pred - tem.dataCSV.test$bugs)^2)/length(lm.pred)
-lm.mse # 2.547035
+lm.mse # 2.519918
 
 d <- tem.dataCSV.test$bugs - lm.pred
 lm.mae <- mean(abs(d))
-lm.mae # 1.564324
+lm.mae # 1.555973
 lm.rmse <- sqrt(mean(d^2))
-lm.rmse # 1.595943
+lm.rmse # 1.587425
 
 ################################################################################
 #
 # ATENTION: YOU NEED TO USE THE COMPETION DATA, THE ALL DATASET.
 #           YOU CANNOT DEVIDE THE DATASET INTO TRAINING AND TESTING.
 #           IT WILL NOT WORK, TRUST ME!
-# SUBMISSION 1 AND 2:
-#               RANDOM TEST SUBMISSIONS!
-# 
-# SUBMISSION 3: 
-#               THE ROC ON THE THIRD TRY WAS OF 0.618431 
-#               WITH THE CLASSIFICATION TREE!
-# SUBMISSION 4:
-#               THE ROC ON THE FORTH TRY WAS OF 0.7349
-#               WITH THE CLASSIFICATION TREE AND BOTH SAMPELING!
-# SUBMISSION 5:
-#               THE ROC ON THE FIFHT TRY WAS OF 0.7349
-#               WITH THE CLASSIFICATION TREE AND SOMTE SAMPELING!
-# SUBMISSION 6:
-#               THE ROC ON THE SIXTH TRY WAS OF 0.7228
-#               WITH THE CLASSIFICATION TREE, SOMTE SAMPELING 
-#               AND ALSO THE VARIABLES WITH HIGHER CORELATION (70 percent)!
-# SUBMISSION 7:
-#               THE ROC ON THE SEVENTH TRY WAS OF 0.7277
-#               WITH THE CLASSIFICATION TREE, OVER AND UNDER SAMPELING, 
-#               AS WELL AS, WITH SOMTE,
-#               AND ALSO WITH ALL THE VARIABLES!
-#
-# SUBMISSION 8:
-#               THE ROC ON THE EIGHT TRY WAS OF 0.8006
-#               WITH THE LINEAR REGRESSION, OVER AND UNDER SAMPELING, 
-#               AS WELL AS, WITH SOMTE,
-#               AND ALSO WITH ONLY THE SELECTED VARIABLES!
-#
 # Export data set to more or less Kaggle format
 ################################################################################
 dataCSVComp <- read.csv("data/comp.csv")
@@ -385,6 +363,4 @@ predict.bug
 
 # Save the data into submission format.
 
-write.csv(predict.bug, "submissions/decision_tree_formated.csv",
-          row.names = TRUE,
-          col.names = TRUE)
+write.csv(predict.bug, "submissions/linear_regression.csv")

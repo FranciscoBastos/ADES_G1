@@ -41,9 +41,7 @@ library("randomForestSRC")
 library("keras")
 library("mlbench")
 library("magrittr")
-
-install_tensorflow()
-use_condaenv("r-tensorflow")
+library("FeatureTerminatoR")
 
 require(caTools)
 
@@ -52,7 +50,6 @@ suppressPackageStartupMessages(c(library(caret),
                                  library(smotefamily)))
 
 ################################Load data#######################################
-
 dataCSV <- read.csv("./data/dev.csv")
 dataCSV <- na.omit(dataCSV)
 # Re-sample the data in 55000 samples
@@ -109,14 +106,22 @@ barplot(prop.table(table(tem.dataCSV.balanced.sample$bugs)),
 #
 ################################################################################
 set.seed(2987465)
-index <- sample(1:nrow(tem.dataCSV.balanced.sample), 
-                as.integer(0.7*nrow(tem.dataCSV.balanced.sample)))
-tem.dataCSV.train <- tem.dataCSV.balanced.sample[index,]
+# createDataPartition() function from the caret package to split the original 
+# data set into a training and testing set and split data into training 
+# (70%) and testing set (30%)
+parts = createDataPartition(tem.dataCSV.balanced.sample$bugs, 
+                            p = 0.70, 
+                            list = FALSE)
 
-tem.dataCSV.test <- tem.dataCSV.balanced.sample[-index,]
+tem.dataCSV.train = tem.dataCSV.balanced.sample[parts, ]
+tem.dataCSV.test = tem.dataCSV.balanced.sample[-parts, ]
+X_train = tem.dataCSV.train[,-ncol(tem.dataCSV.balanced.sample)]
+y_train = tem.dataCSV.train[,ncol(tem.dataCSV.balanced.sample)]
 
 dim(tem.dataCSV.train)
 dim(tem.dataCSV.test)
+dim(X_train)
+dim(y_train) # should be NULL
 
 # The SMOTE function requires the target variable to be numeric
 tem.dataCSV.train$bugs <- as.numeric(tem.dataCSV.train$bugs)
@@ -138,7 +143,6 @@ colnames(tem.dataCSV.train.SMOTE) [ncol(tem.dataCSV.train.SMOTE)] <- "bugs"
 tem.dataCSV.train.SMOTE$bugs <- as.factor(tem.dataCSV.train.SMOTE$bugs)
 table(tem.dataCSV.train.SMOTE$bugs)
 ################################### Both #######################################
-################################### Both ######################################
 # To decrease the size of the data-set we should use under
 ################################################################################
 # Needed this to reduce the size of the data set
@@ -159,6 +163,48 @@ barplot(prop.table(table(train.smote.both$bugs)),
         col = rainbow(2),
         ylim = c(0, 1),
         main = "Class distribution (SMOTE, Over, Under)")
+##################### Linear regression - selection of variables ###############
+# Inspired by the post: 
+# https://quantifyinghealth.com/stepwise-selection/
+# https://www.kaggle.com/code/mahmoud86/tutorial-subset-selection-methods/notebook
+# https://towardsdatascience.com/selecting-the-best-predictors-for-linear-regression-in-r-f385bf3d93e9
+# https://www.rdocumentation.org/packages/klaR/versions/1.7-0/topics/stepclass
+# https://rstudio-pubs-static.s3.amazonaws.com/425228_86d6a6878a4e4d22bc96414f1b732c36.html
+# https://topepo.github.io/caret/recursive-feature-elimination.html
+# https://machinelearningmastery.com/feature-selection-with-the-caret-r-package/
+#
+# Training methods:
+# http://topepo.github.io/caret/train-models-by-tag.html#ROC_Curves
+################################################################################
+############################# Feature selection ################################
+# Define the control using a linear function selection function
+# Change for other functions for classification problems, see the link bellow:
+# http://topepo.github.io/caret/recursive-feature-elimination.html#rfe
+################################################################################
+
+control <- rfeControl(functions = treebagFuncs,
+                      method = "repeatedcv",
+                      repeats = 3, # number of repeats
+                      number = 10,
+                      verbose = TRUE)
+
+subsets <- c(1:ncol(train.smote.both), 10, 15, 20, 25)
+################################################################################
+# Run the RFE algorithm
+################################################################################
+results <- rfe(x = X_train, 
+               y = y_train, 
+               sizes = subsets, 
+               rfeControl = control)
+# summarize the results
+print(results)
+# list the chosen features
+predictors(results)
+# plot the results
+plot(results, type=c("g", "o"))
+variables <- data.frame(results$optVariables) # STORE THE VARIABLES
+variables$results.optVariables
+################################################################################
 
 ##################### Apply the neural networks algorithm ######################
 # Verify if the all the variables are factors because the neural networks
