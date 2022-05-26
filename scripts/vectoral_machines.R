@@ -11,6 +11,7 @@ install.packages("gdata", "tree", "ROCR")
 install.packages("gdata")
 install.packages("RandomForestsGLS", dependencies = TRUE)
 install.packages("e1071")
+install.packages("ggstatsplot")
 
 library("e1071")
 library("gdata")
@@ -46,6 +47,9 @@ library("magrittr")
 library("e1071")
 library("rgl")
 library("misc3d")
+library("ggstatsplot")
+library("outliers")
+library("doMC")
 
 
 install_tensorflow()
@@ -110,7 +114,14 @@ barplot(prop.table(table(tem.dataCSV.balanced.sample$bugs)),
         ylim = c(0, 1),
         main = "Class distribution")
 ############################### Remove the outliers ############################
-boxplot(tem.dataCSV.balanced.sample)
+# https://rdrr.io/cran/outliers/man/rm.outlier.html
+################################################################################
+boxplot(tem.dataCSV.balanced.sample)$out
+
+rm.outlier(tem.dataCSV.balanced.sample, fill = TRUE)
+
+tem.dataCSV.balanced.sample
+
 ################################################################################
 ############################### SMOTE function #################################
 # Divide our balanced data 
@@ -147,9 +158,7 @@ colnames(tem.dataCSV.train.SMOTE) [ncol(tem.dataCSV.train.SMOTE)] <- "bugs"
 tem.dataCSV.train.SMOTE$bugs <- as.factor(tem.dataCSV.train.SMOTE$bugs)
 table(tem.dataCSV.train.SMOTE$bugs)
 ################################### Both #######################################
-################################### Both ######################################
 # To decrease the size of the data-set we should use under
-################################################################################
 # Needed this to reduce the size of the data set
 # https://www.statology.org/smote-in-r/
 ################################################################################
@@ -161,8 +170,6 @@ train.smote.both <-
               method = "both")$data
 table(train.smote.both$bugs)
 
-train.smote.both.target <- tem.dataCSV.train.SMOTE
-
 # Visualize the data
 barplot(prop.table(table(train.smote.both$bugs)),
         col = rainbow(2),
@@ -170,6 +177,9 @@ barplot(prop.table(table(train.smote.both$bugs)),
         main = "Class distribution (SMOTE, Over, Under)")
 
 ##################################### SVM ######################################
+# configure multicore
+registerDoMC(cores = 4)
+
 svm.model = svm(bugs ~ NOI + RFC + CBO + WMC + Coupling.Metric.Rules + 
                   JUnit.Rules + Strict.Exception.Rules + NII + CBOI + LLOC +
                   TLLOC + NA. + NOA + TNOS + NLE + TLOC + 
@@ -188,5 +198,20 @@ svm.model = svm(bugs ~ NOI + RFC + CBO + WMC + Coupling.Metric.Rules +
                 type = 'C-classification',
                 kernel = 'linear')
 
-################################## Print the SVM ###############################
-plot3d(train.smote.both, col=train.smote.both$both)
+############################# Predict and print the SVM ########################
+
+svm.predict <- predict(svm.model, tem.dataCSV.test, decision.values = TRUE)
+
+svm.predict
+
+cm <- cm = table(tem.dataCSV.test, svm.predict)
+
+################################## Tune the SVM ################################
+# find optimal cost of misclassification
+tune.out <- tune(method = svm,
+                 formula = bugs ~., 
+                 data = train.smote.both, 
+                 kernel = "linear",
+                 ranges = list(cost = c(0.001, 0.01, 0.1, 1, 5, 10, 100)))
+# extract the best model
+(bestmod <- tune.out$optimal)

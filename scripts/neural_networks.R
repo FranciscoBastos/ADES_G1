@@ -42,6 +42,8 @@ library("keras")
 library("mlbench")
 library("magrittr")
 library("FeatureTerminatoR")
+library("mlbench")
+library("doMC")
 
 require(caTools)
 
@@ -77,7 +79,22 @@ tem.dataCSV.balanced.sample$MigratingToJUnit4.Rules # should be NULL
 tem.dataCSV.balanced.sample$bugs <-
   as.integer(as.logical(tem.dataCSV.balanced.sample$bugs))
 
-###############################Cleaning the data ###############################
+###################### Normalize the training data set #########################
+# https://www.geeksforgeeks.org/how-to-normalize-and-standardize-data-in-r/
+# Custom function to implement min max scaling
+# train.smote.both.norm <- scale(train.smote.both, scale = TRUE)
+minmaxnorm <- function(x) {
+  return ((x - min(x)) / (max(x) - min(x)))
+}
+
+tem.dataCSV.balanced.sample <- 
+  as.data.frame(lapply(tem.dataCSV.balanced.sample, minmaxnorm))
+
+apply(tem.dataCSV.balanced.sample, 2, min)
+
+apply(tem.dataCSV.balanced.sample, 2, max)
+
+############################### Cleaning the data ##############################
 # How to correct the data test information, when we know that the data is 
 # unbalanced?
 # 
@@ -99,7 +116,7 @@ tem.dataCSV.balanced.sample$bugs <-
 barplot(prop.table(table(tem.dataCSV.balanced.sample$bugs)),
         col = rainbow(2),
         ylim = c(0, 1),
-        main = "Class distribution")
+        main = "Bugs class distribution")
 ############################### SMOTE function #################################
 # Divide our balanced data 
 # Trying with: SMOTE
@@ -156,56 +173,11 @@ train.smote.both <-
               method = "both")$data
 table(train.smote.both$bugs)
 
-train.smote.both.target <- tem.dataCSV.train.SMOTE
-
 # Visualize the data
 barplot(prop.table(table(train.smote.both$bugs)),
         col = rainbow(2),
         ylim = c(0, 1),
-        main = "Class distribution (SMOTE, Over, Under)")
-##################### Linear regression - selection of variables ###############
-# Inspired by the post: 
-# https://quantifyinghealth.com/stepwise-selection/
-# https://www.kaggle.com/code/mahmoud86/tutorial-subset-selection-methods/notebook
-# https://towardsdatascience.com/selecting-the-best-predictors-for-linear-regression-in-r-f385bf3d93e9
-# https://www.rdocumentation.org/packages/klaR/versions/1.7-0/topics/stepclass
-# https://rstudio-pubs-static.s3.amazonaws.com/425228_86d6a6878a4e4d22bc96414f1b732c36.html
-# https://topepo.github.io/caret/recursive-feature-elimination.html
-# https://machinelearningmastery.com/feature-selection-with-the-caret-r-package/
-#
-# Training methods:
-# http://topepo.github.io/caret/train-models-by-tag.html#ROC_Curves
-################################################################################
-############################# Feature selection ################################
-# Define the control using a linear function selection function
-# Change for other functions for classification problems, see the link bellow:
-# http://topepo.github.io/caret/recursive-feature-elimination.html#rfe
-################################################################################
-
-control <- rfeControl(functions = treebagFuncs,
-                      method = "repeatedcv",
-                      repeats = 3, # number of repeats
-                      number = 10,
-                      verbose = TRUE)
-
-subsets <- c(1:ncol(train.smote.both), 10, 15, 20, 25)
-################################################################################
-# Run the RFE algorithm
-################################################################################
-results <- rfe(x = X_train, 
-               y = y_train, 
-               sizes = subsets, 
-               rfeControl = control)
-# summarize the results
-print(results)
-# list the chosen features
-predictors(results)
-# plot the results
-plot(results, type=c("g", "o"))
-variables <- data.frame(results$optVariables) # STORE THE VARIABLES
-variables$results.optVariables
-################################################################################
-
+        main = "Bugs class distribution (SMOTE, Over, Under)")
 ##################### Apply the neural networks algorithm ######################
 # Verify if the all the variables are factors because the neural networks
 # algorithms only work with numeric values
@@ -215,51 +187,161 @@ train.smote.both %<>% mutate_if(is.factor, as.numeric)
 str(tem.dataCSV.test, list.len=ncol(tem.dataCSV.test))
 # Change all variables to numeric
 tem.dataCSV.test %<>% mutate_if(is.integer, as.numeric)
-###################### Normalize the training data set #########################
-# https://www.geeksforgeeks.org/how-to-normalize-and-standardize-data-in-r/
-# Custom function to implement min max scaling
-# train.smote.both.norm <- scale(train.smote.both, scale = TRUE)
-minmaxnorm <- function(x) {
-  return ((x - min(x)) / (max(x) - min(x)))
-}
 
-train.smote.both.norm <- as.data.frame(lapply(train.smote.both.norm, minmaxnorm))
+# Classification ANNs in the neuralnet package 
+# require that the response feature, in this case bugs, 
+# be inputted as a Boolean feature.
+# Train
+# http://uc-r.github.io/ann_classification
+class(train.smote.both$bugs)
+train.smote.both <- train.smote.both %>%
+  mutate(bugs = ifelse(bugs == 1, TRUE, FALSE))
+class(train.smote.both$bugs)
+str(train.smote.both)
 
-apply(train.smote.both.norm, 2, min)
-
-apply(train.smote.both.norm, 2, max)
+# Classification ANNs in the neuralnet package 
+# require that the response feature, in this case bugs, 
+# be inputted as a Boolean feature.
+# Test
+# http://uc-r.github.io/ann_classification
+class(tem.dataCSV.test$bugs)
+tem.dataCSV.test <- tem.dataCSV.test %>%
+  mutate(bugs = ifelse(bugs == 1, TRUE, FALSE))
+class(tem.dataCSV.test$bugs)
+str(tem.dataCSV.test)
 
 ########################### Preliminary setup ##################################
 # Start at 10 nodes and iterate 5 to 5 until 100,
 # With 2 hidden layers maximum
+#
+# This features are the most important 
+# according with the bagged tree RFE selection
 ################################################################################
-neural.net.bugs <- neuralnet(bugs ~ NOI + RFC + CBO + WMC + 
-                               Coupling.Metric.Rules + JUnit.Rules + 
-                               Strict.Exception.Rules + NII + CBOI + LLOC +
-                               TLLOC + NA. + NOA + TNOS + NLE + TLOC + 
-                               Complexity.Metric.Rules + LOC + DIT +
-                               NL + NOS + WarningMajor + WarningMinor + 
-                               Unnecessary.and.Unused.Code.Rules + 
-                               WarningInfo + TNA + NLM + 
-                               Type.Resolution.Rules + Clone.Metric.Rules +
-                               PUA + NM + Documentation.Metric.Rules +
-                               Inheritance.Metric.Rules + LDC + NLA +
-                               LLDC + NG + TNLS + CI + Brace.Rules + 
-                               String.and.StringBuffer.Rules + CD +
-                               Cohesion.Metric.Rules + AD + Android.Rules +
-                               Basic.Rules + CC + CCL + CCO + CLC + 
-                               CLLC + CLOC + Clone.Implementation.Rules +
-                               Controversial.Rules + Design.Rules +
-                               DLOC + Empty.Code.Rules +
-                               Finalizer.Rules + Import.Statement.Rules +
-                               J2EE.Rules,
-                             data = train.smote.both.norm,
-                             err.fct = 'ce', 
-                             likelihood = TRUE)
+neural.net.bugs.first <- neuralnet(bugs ~ NOI + RFC + CBO + WMC + 
+                                     Coupling.Metric.Rules + JUnit.Rules + 
+                                     Strict.Exception.Rules + NII + CBOI + 
+                                     LLOC + TLLOC + NA. + NOA + TNOS + NLE + 
+                                     TLOC + Complexity.Metric.Rules +
+                                     LOC + DIT + NL + NOS +
+                                     WarningMajor + WarningMinor + 
+                                     Unnecessary.and.Unused.Code.Rules +
+                                     WarningInfo + TNA + NLM + 
+                                     Type.Resolution.Rules +
+                                     Clone.Metric.Rules + PUA + NM +
+                                     Documentation.Metric.Rules +
+                                     Inheritance.Metric.Rules + LDC + NLA +
+                                     LLDC + NG + TNLS + CI + Brace.Rules +
+                                     String.and.StringBuffer.Rules + CD +
+                                     Cohesion.Metric.Rules + AD + 
+                                     Android.Rules + Basic.Rules + CC +
+                                     CCL + CCO + CLC + 
+                                     CLLC + CLOC + Clone.Implementation.Rules +
+                                     Controversial.Rules + Design.Rules +
+                                     DLOC + Empty.Code.Rules +
+                                     Finalizer.Rules + Import.Statement.Rules +
+                                     J2EE.Rules,
+                                   data = train.smote.both,
+                                   linear.output = FALSE,
+                                   err.fct = 'ce',
+                                   likelihood = TRUE,
+                                   stepmax=1e7)
 
 ########################## Plot for better data visualization ##################
-plot(neural.net.bugs, col.hidden = 'darkgreen',
-     col.hidden.synapse = 'darkgreen', 
-     show.weights = F,
-     information = F,
-     fill = 'lightblue')
+plot(neural.net.bugs.first, rep = 'best')
+############################ Compute the probability ###########################
+output <- compute(neural.net.bugs.first, tem.dataCSV.test, rep = 1)
+summary(output)
+output$net.result # The probability
+
+class(tem.dataCSV.test$bugs)
+tem.dataCSV.test$bugs <- as.numeric(tem.dataCSV.test$bugs)
+output <- as.numeric(output$net.result)
+class(output)
+roc.accuracy <- roc(tem.dataCSV.test$bugs, output)
+print(roc.accuracy) # The area under the curve is 0.806
+plot(roc.accuracy)
+
+############################# Test for other models ############################
+# Random Hyper Parameter Search
+# Helps:
+# https://topepo.github.io/caret/recursive-feature-elimination.html
+# http://uc-r.github.io/ann_classification
+# https://www.learnbymarketing.com/tutorials/neural-networks-in-r-tutorial/
+# https://topepo.github.io/caret/random-hyperparameter-search.html 
+# https://topepo.github.io/caret/train-models-by-tag.html#Neural_Network 
+# https://stackoverflow.com/questions/44084735/classification-usage-of-factor-levels
+# 
+################################################################################
+# configure multicore
+registerDoMC(cores = 4)
+
+fitControl <- trainControl(method = "repeatedcv",
+                           number = 10,
+                           repeats = 1,
+                           classProbs = TRUE,
+                           summaryFunction = twoClassSummary,
+                           search = "random")
+
+set.seed(825)
+
+# It needs or factor or numeric 
+# Turn bugs logical column into a integer value of 1 or 0.
+train.smote.both$bugs <-
+  as.integer(as.logical(train.smote.both$bugs))
+train.smote.both$bugs <- as.factor(train.smote.both$bugs)
+class(train.smote.both$bugs)
+
+neural.net.fit <- train(make.names(bugs) ~ ., 
+                 data = train.smote.both, 
+                 method = "nnet",
+                 metric = "ROC",
+                 tuneLength = 30, # 30 tuning parameter combinations
+                 trControl = fitControl)
+neural.net.fit$bestTune
+
+ggplot(neural.net.fit) + theme(legend.position = "top")
+
+################################################################################
+# configure multicore
+registerDoMC(cores = 4)
+
+control <- rfeControl(functions = rfFuncs,
+                      method = "repeatedcv",
+                      number = 10,
+                      verbose = TRUE)
+
+subsets <- c(1:ncol(train.smote.both), 10, 15, 20, 25)
+################################################################################
+# configure multicore
+registerDoMC(cores = 4)
+
+neural.net.bugs.second <- neuralnet(bugs ~ NOI + RFC + CBO + WMC + 
+                                     Coupling.Metric.Rules + JUnit.Rules + 
+                                     Strict.Exception.Rules + NII + CBOI + 
+                                     LLOC + TLLOC + NA. + NOA + TNOS + NLE + 
+                                     TLOC + Complexity.Metric.Rules +
+                                     LOC + DIT + NL + NOS +
+                                     WarningMajor + WarningMinor + 
+                                     Unnecessary.and.Unused.Code.Rules +
+                                     WarningInfo + TNA + NLM + 
+                                     Type.Resolution.Rules +
+                                     Clone.Metric.Rules + PUA + NM +
+                                     Documentation.Metric.Rules +
+                                     Inheritance.Metric.Rules + LDC + NLA +
+                                     LLDC + NG + TNLS + CI + Brace.Rules +
+                                     String.and.StringBuffer.Rules + CD +
+                                     Cohesion.Metric.Rules + AD + 
+                                     Android.Rules + Basic.Rules + CC +
+                                     CCL + CCO + CLC + 
+                                     CLLC + CLOC + Clone.Implementation.Rules +
+                                     Controversial.Rules + Design.Rules +
+                                     DLOC + Empty.Code.Rules +
+                                     Finalizer.Rules + Import.Statement.Rules +
+                                     J2EE.Rules,
+                                   data = train.smote.both,
+                                   linear.output = FALSE,
+                                   err.fct = 'ce',
+                                   likelihood = TRUE,
+                                   stepmax = 1e7,
+                                   hidden = c(9, 7))
+

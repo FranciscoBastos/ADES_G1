@@ -27,7 +27,6 @@ library("rpart.plot")
 library("neuralnet")
 library("party")
 library("partykit")
-library("DMwR")
 library("DMwR2")
 library("smotefamily")
 library("ROSE")
@@ -39,15 +38,19 @@ library("leaps")
 library("pROC")
 library("ggplot2")
 library("RandomForestsGLS")
+library("randomForest")
+library("doMC")
 
 
 require(caTools)
 
-suppressPackageStartupMessages(c(library(caret),library(corrplot),library(smotefamily)))
+suppressPackageStartupMessages(c(library(caret),
+                                 library(corrplot),
+                                 library(smotefamily)))
 
-if(!require('DMwR')) {
-  install.packages('DMwR')
-  library('DMwR')
+if(!require('DMwR2')) {
+  install.packages('DMwR2')
+  library('DMwR2')
 }
 
 ################################Load data#######################################
@@ -144,7 +147,46 @@ barplot(prop.table(table(train.smote.both$bugs)),
         ylim = c(0, 1),
         main = "Bug class distribution (SMOTE, Over, Under sampeling)")
 
+##################################### RFE ######################################
+X_train = tem.dataCSV.train[,-ncol(tem.dataCSV.balanced.sample)]
+
+class(tem.dataCSV.train[,ncol(tem.dataCSV.balanced.sample)])
+
+tem.dataCSV.train[,ncol(tem.dataCSV.balanced.sample)] <- 
+  as.factor(tem.dataCSV.train[,ncol(tem.dataCSV.balanced.sample)]) 
+
+# SHOULD BE A FACTOR
+class(tem.dataCSV.train[,ncol(tem.dataCSV.balanced.sample)])
+y_train = tem.dataCSV.train[,ncol(tem.dataCSV.balanced.sample)]
+
+################################################################################
+control <- rfeControl(functions = rfFuncs,
+                      method = "repeatedcv",
+                      number = 10,
+                      verbose = TRUE)
+
+subsets <- c(1:ncol(train.smote.both), 10, 15, 20, 25)
+################################################################################
+# Run the RFE algorithm
+################################################################################
+# configure multicore
+registerDoMC(cores = 6)
+results <- rfe(x = X_train, 
+               y = y_train, 
+               sizes = subsets, 
+               rfeControl = control)
+# summarize the results
+print(results)
+# list the chosen features
+predictors(results)
+# plot the results
+plot(results, type=c("g", "o"))
+variables <- data.frame(results$optVariables) # STORE THE VARIABLES
+variables$results.optVariables
+
 ###################### Apply the random forest algorithm #######################
+# TODO WAIT FOR THE BEST VARIABLES ON THE MODEL ABOVE THAT 
+# BRUNO IS GOING TO GIVE TO ME
 rf <- rfsrc(bugs ~ NOI + RFC + CBO + WMC + Coupling.Metric.Rules + 
               JUnit.Rules + Strict.Exception.Rules + NII + CBOI + LLOC +
               TLLOC + NA. + NOA + TNOS + NLE + TLOC + 
@@ -174,38 +216,6 @@ rf.pred.probs
 # ATENTION: YOU NEED TO USE THE COMPETION DATA, THE ALL DATASET.
 #           YOU CANNOT DEVIDE THE DATASET INTO TRAINING AND TESTING.
 #           IT WILL NOT WORK, TRUST ME!
-# SUBMISSION 1 AND 2:
-#               RANDOM TEST SUBMISSIONS!
-# 
-# SUBMISSION 3: 
-#               THE ROC ON THE THIRD TRY WAS OF 0.618431 
-#               WITH THE CLASSIFICATION TREE!
-# SUBMISSION 4:
-#               THE ROC ON THE FORTH TRY WAS OF 0.7349
-#               WITH THE CLASSIFICATION TREE AND BOTH SAMPELING!
-# SUBMISSION 5:
-#               THE ROC ON THE FIFHT TRY WAS OF 0.7349
-#               WITH THE CLASSIFICATION TREE AND SOMTE SAMPELING!
-# SUBMISSION 6:
-#               THE ROC ON THE SIXTH TRY WAS OF 0.7228
-#               WITH THE CLASSIFICATION TREE, SOMTE SAMPELING 
-#               AND ALSO THE VARIABLES WITH HIGHER CORELATION (70 percent)!
-# SUBMISSION 7:
-#               THE ROC ON THE SEVENTH TRY WAS OF 0.7277
-#               WITH THE CLASSIFICATION TREE, OVER AND UNDER SAMPELING, 
-#               AS WELL AS, WITH SOMTE,
-#               AND ALSO WITH ALL THE VARIABLES!
-#
-# SUBMISSION 8:
-#               THE ROC ON THE EIGHT TRY WAS OF 0.8006
-#               WITH THE LINEAR REGRESSION, OVER AND UNDER SAMPELING, 
-#               AS WELL AS, WITH SOMTE,
-#               AND ALSO WITH ONLY THE SELECTED VARIABLES!
-# SUBMISSION 9:
-#               THE ROC ON THE EIGHT TRY WAS OF 0.86713796
-#               WITH THE RANDOM FOREST, OVER AND UNDER SAMPELING, 
-#               AS WELL AS, WITH SOMTE,
-#               AND ALSO WITH ONLY THE SELECTED VARIABLES!
 #
 # Export data set to more or less Kaggle format
 ################################################################################
@@ -240,7 +250,8 @@ predict.bug$predicted
 df.predict.bug <- data.frame(predict.bug$xvar, predict.bug$predicted)
 df.predict.bug
 
-submission <- df.predict.bug[ , ncol(df.predict.bug), drop = FALSE] # apply ncol & drop
+# Apply ncol & drop
+submission <- df.predict.bug[ , ncol(df.predict.bug), drop = FALSE]
 submission
 
 write.csv(submission, "submissions/random_forest.csv")
