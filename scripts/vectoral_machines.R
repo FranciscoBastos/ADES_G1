@@ -50,6 +50,7 @@ library("misc3d")
 library("ggstatsplot")
 library("outliers")
 library("doMC")
+library("ElemStatLearn")
 
 
 install_tensorflow()
@@ -176,35 +177,50 @@ barplot(prop.table(table(train.smote.both$bugs)),
         ylim = c(0, 1),
         main = "Class distribution (SMOTE, Over, Under)")
 
-##################################### SVM ######################################
-# configure multicore
-registerDoMC(cores = 4)
+############################ Normalize the features ############################
+# https://medium.com/0xcode/svm-classification-algorithms-in-r-ced0ee73821
+#
+train.smote.both[-ncol(train.smote.both)] = 
+  scale(train.smote.both[-ncol(train.smote.both)])
 
-svm.model = svm(bugs ~ NOI + RFC + CBO + WMC + Coupling.Metric.Rules + 
-                  JUnit.Rules + Strict.Exception.Rules + NII + CBOI + LLOC +
-                  TLLOC + NA. + NOA + TNOS + NLE + TLOC + 
-                  Complexity.Metric.Rules + LOC + DIT + NL + NOS + 
-                  WarningMajor + WarningMinor + 
-                  Unnecessary.and.Unused.Code.Rules + WarningInfo + TNA + NLM + 
-                  Type.Resolution.Rules + Clone.Metric.Rules + PUA + NM + 
-                  Documentation.Metric.Rules + Inheritance.Metric.Rules + 
-                  LDC + NLA + LLDC + NG + TNLS + CI + Brace.Rules + 
-                  String.and.StringBuffer.Rules + CD + Cohesion.Metric.Rules + 
-                  AD + Android.Rules + Basic.Rules + CC + CCL + CCO + CLC + 
-                  CLLC + CLOC + Clone.Implementation.Rules +
-                  Controversial.Rules + Design.Rules + DLOC + Empty.Code.Rules +
-                  Finalizer.Rules + Import.Statement.Rules + J2EE.Rules,
-                data = train.smote.both, 
+tem.dataCSV.test[-ncol(tem.dataCSV.test)] = 
+  scale(tem.dataCSV.test[-ncol(tem.dataCSV.test)])
+
+##################################### SVM ######################################
+
+svm.model = svm(formula = bugs ~ .,
+                data = train.smote.both,
                 type = 'C-classification',
                 kernel = 'linear')
 
 ############################# Predict and print the SVM ########################
 
-svm.predict <- predict(svm.model, tem.dataCSV.test, decision.values = TRUE)
+svm.predict <- predict(svm.model, newdata = tem.dataCSV.test)
 
 svm.predict
 
-cm <- cm = table(tem.dataCSV.test, svm.predict)
+cm <- table(tem.dataCSV.test[, ncol(tem.dataCSV.test)], svm.predict)
+
+accuracy <- sum(diag(cm)) / sum(cm)
+accuracy # 0.5595152
+error.dt.test <- 1 - sum(diag(cm)) / sum(cm)
+error.dt.test # 0.4404848
+
+precision <- cm[1, 1]/sum(cm[,1])
+precision # 0.9901013
+recall <- cm[1, 1]/sum(cm[1,])
+recall # 0.5420465
+f1 <- 2 * ((precision * recall) / (precision + recall))
+f1 # 0.7005603
+
+# ROC - are under the curve a more viable metric for the accuracy of our model
+# Both of the arguments on the ROC function need to be numeric!
+class(tem.dataCSV.test$bugs)
+dt.preds <- as.numeric(svm.predict)
+roc.accuracy <- roc(tem.dataCSV.test$bugs, dt.preds)
+print(roc.accuracy)
+plot(roc.accuracy)
+# The area under the curve is 0.7189
 
 ################################## Tune the SVM ################################
 # find optimal cost of misclassification
@@ -214,4 +230,12 @@ tune.out <- tune(method = svm,
                  kernel = "linear",
                  ranges = list(cost = c(0.001, 0.01, 0.1, 1, 5, 10, 100)))
 # extract the best model
-(bestmod <- tune.out$optimal)
+
+tune.out$optimal
+
+(valid <- table(true = train.smote.both,
+                pred = predict(tune.out$optimal, newx = train.smote.both)))
+
+plot(svm.model, train.smote.both, decision.v) # adaptable to other dimensions
+
+
