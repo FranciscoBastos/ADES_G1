@@ -345,3 +345,4 @@ neural.net.bugs.second <- neuralnet(bugs ~ NOI + RFC + CBO + WMC +
                                    stepmax = 1e7,
                                    hidden = c(9, 7))
 
+# TODO MAKE A PREDICTION WITH THE COMPETION DATA
