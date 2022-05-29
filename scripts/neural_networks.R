@@ -211,7 +211,8 @@ class(tem.dataCSV.test$bugs)
 str(tem.dataCSV.test)
 
 ########################### Preliminary setup ##################################
-# Start at 10 nodes and iterate 5 to 5 until 100,
+# Start at 1 node and 
+# iterate make parameter tuning so we can get the best results,
 # With 2 hidden layers maximum
 #
 # This features are the most important 
@@ -260,6 +261,38 @@ class(output)
 roc.accuracy <- roc(tem.dataCSV.test$bugs, output)
 print(roc.accuracy) # The area under the curve is 0.806
 plot(roc.accuracy)
+
+############################ De-normalize the data #############################
+
+minvec <- sapply(tem.dataCSV.test, min)
+maxvec <- sapply(tem.dataCSV.test, max)
+
+denormalize <- function(x,minval,maxval) {
+  x * (maxval - minval) + minval
+}
+
+as.data.frame(Map(denormalize, tem.dataCSV.test, minvec, maxvec))
+
+# compute confusion matrix
+cm <- table(output, tem.dataCSV.test$bugs)
+cm
+
+confusionMatrix(cm)
+
+accuracy <- sum(diag(cm)) / sum(cm)
+accuracy # 0.07690909
+error.dt.test <- 1 - sum(diag(cm)) / sum(cm)
+error.dt.test # 0.9230909
+
+################################ Other statistics ##############################
+# inspired by: https://towardsdatascience.com/accuracy-precision-recall-or-f1-331fb37c5cb9 
+################################################################################
+precision <- cm[1, 1]/sum(cm[,1])
+precision # 0.836077
+recall <- cm[1, 1]/sum(cm[1,])
+recall # 0.9754715
+f1 <- 2 * ((precision * recall) / (precision + recall))
+f1 # 0.9004112
 
 ############################# Test for other models ############################
 # Random Hyper Parameter Search
@@ -345,4 +378,46 @@ neural.net.bugs.second <- neuralnet(bugs ~ NOI + RFC + CBO + WMC +
                                    stepmax = 1e7,
                                    hidden = c(9, 7))
 
-# TODO MAKE A PREDICTION WITH THE COMPETION DATA
+################################################################################
+#
+# ATENTION: YOU NEED TO USE THE COMPETION DATA, THE ALL DATASET.
+#           YOU CANNOT DEVIDE THE DATASET INTO TRAINING AND TESTING.
+#           IT WILL NOT WORK, TRUST ME!
+#
+# Export data set to more or less Kaggle format
+################################################################################
+dataCSVComp <- read.csv("data/comp.csv")
+dataCSVComp <- na.omit(dataCSVComp)
+tem.dataCSVComp <- subset(dataCSVComp, select=-c(ID,
+                                                 Parent,
+                                                 Component,
+                                                 Line,
+                                                 Column,
+                                                 EndLine,
+                                                 EndColumn,
+                                                 WarningBlocker, 
+                                                 Code.Size.Rules, 
+                                                 Comment.Rules, 
+                                                 Coupling.Rules, 
+                                                 MigratingToJUnit4.Rules,
+                                                 Migration13.Rules,
+                                                 Migration14.Rules,
+                                                 Migration15.Rules,
+                                                 Vulnerability.Rules))
+
+#######################Decision tree with competition data######################
+
+# Prediction
+predict.bug <- compute(neural.net.bugs.first, tem.dataCSVComp)
+predict.bug$net.result
+
+# Turn prediction data into a data.frame
+df.predict.bug <- data.frame(predict.bug)
+df.predict.bug
+
+# Apply ncol & drop
+submission <- df.predict.bug[ , ncol(df.predict.bug), drop = FALSE]
+submission
+
+write.csv(submission, "submissions/neural_net.csv")
+
