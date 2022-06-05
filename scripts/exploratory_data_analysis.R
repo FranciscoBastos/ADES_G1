@@ -117,3 +117,6 @@ tem.dataCSV.balanced.sample %>% eda_paged_report(target = "bugs",
                                                  output_dir = "/Users/franciscobastos/Developer/ADES/ADES_G1/reports", 
                                                  output_file = "thebugcathcer.html",
                                                  theme = "blue")
+
+cor.test(tem.dataCSV.balanced.sample$bugs, 
+         tem.dataCSV.balanced.sample$RFC, method = "pearson") # Pearson test of 0.214769 not very high

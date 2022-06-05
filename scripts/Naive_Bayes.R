@@ -166,7 +166,29 @@ variables <- data.frame(results$optVariables) # STORE THE VARIABLES
 variables$results.optVariables
 
 ##################### Apply the naive Bayes algorithm ##########################
+############################## Variable analysis ###############################
+# Pearson test of 0.214769 not very high
+#
+#
+# The Response for Class (RFC) metric is the total number of methods that 
+# can potentially be executed in response to a message 
+# received by an object of a class. 
+#
+# This number is the sum of the methods of the class, 
+# and all distinct methods are invoked directly within the class methods. 
+# Additionally, inherited methods are counted, 
+# but overridden methods are not, 
+# because only one method of a particular signature 
+# will always be available to an object of a given class.
+# 
+# Despite the lower correlation, 
+# it makes sense that this metric makes affects the Naïve-Bayes algorithm
 ################################################################################
+cor.test(tem.dataCSV.balanced.sample$bugs, 
+         tem.dataCSV.balanced.sample$RFC, 
+         method = "pearson")
+
+
 model <- naive_bayes(bugs ~ RFC, 
                      data = train.smote.both,
                      usekernel = T) 
