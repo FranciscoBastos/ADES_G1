@@ -186,7 +186,7 @@ variables$results.optVariables
 
 ###################### Apply the random forest algorithm #######################
 # TODO WAIT FOR THE BEST VARIABLES ON THE MODEL ABOVE THAT 
-# BRUNO IS GOING TO GIVE TO ME
+# WHICH CANNOT BE DONE YET BECAUSE OF UNAVAILABLE COMPUTATIONAL RESOURCES
 rf <- rfsrc(bugs ~ NOI + RFC + CBO + WMC + Coupling.Metric.Rules + 
               JUnit.Rules + Strict.Exception.Rules + NII + CBOI + LLOC +
               TLLOC + NA. + NOA + TNOS + NLE + TLOC + 

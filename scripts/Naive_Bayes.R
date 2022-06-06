@@ -220,8 +220,9 @@ misclassification_Traning
 
 
 ############################ Test data #########################################
-p2 <- predict(model, tem.dataCSV.test, type = 'prob')
+p2 <- predict(model, tem.dataCSV.test)
 
+p2
 cm2 <- table(p2, tem.dataCSV.test$bugs)
 cm2
 # Model Evaluation
