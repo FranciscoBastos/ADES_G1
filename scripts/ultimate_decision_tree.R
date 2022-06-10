@@ -34,11 +34,13 @@ library("tidyverse")
 library("leaps")
 library("pROC")
 
-suppressPackageStartupMessages(c(library(caret),library(corrplot),library(smotefamily)))
+suppressPackageStartupMessages(c(library(caret),
+                                 library(corrplot),
+                                 library(smotefamily)))
 
-if(!require('DMwR')) {
-        install.packages('DMwR')
-        library('DMwR')
+if(!require('DMwR2')) {
+        install.packages('DMwR2')
+        library('DMwR2')
 }
 
 ####################################HELPS#######################################
@@ -76,18 +78,15 @@ dataCSV <- na.omit(dataCSV)
 #
 ################################################################################
 ##################### Analyze our data set and fix unbalanced ##################
-class(tem.dataCSV.balanced$bugs)
+class(dataCSV$bugs)
 
 # Turn bugs logical column into a integer value of 1 or 0.
-tem.dataCSV.balanced$bugs <-
-        as.integer(as.logical(tem.dataCSV.balanced$bugs))
+dataCSV$bugs <-
+        as.integer(as.logical(dataCSV$bugs))
 
 # Re-sample the data in half
 tem.dataCSV.balanced.sample <- tem.dataCSV.balanced[1:35000, ]
 tem.dataCSV.balanced.sample <- na.omit(tem.dataCSV.balanced.sample)
-# Turn bugs logical column into a integer value of 1 or 0.
-tem.dataCSV.balanced.sample$bugs <-
-        as.integer(as.logical(tem.dataCSV.balanced.sample$bugs))
 
 table(tem.dataCSV.balanced.sample$bugs)
 # Are the bugs balanced ?
@@ -296,7 +295,7 @@ table(balanced.data.under.sampling.SOMTE.train$bugs)
 barplot(prop.table(table(balanced.data.under.sampling.SOMTE.train$bugs)),
         col = rainbow(2),
         ylim = c(0, 1),
-        main = "Class Distribution under sampling")
+        main = "Bugs class distribution under sampling")
 
 # The SMOTE function requires the target variable to be numeric
 tem.dataCSV.train$bugs <- as.numeric(tem.dataCSV.train$bugs)
@@ -383,7 +382,7 @@ table(balanced.data.both.sampling$bugs)
 barplot(prop.table(table(balanced.data.both.sampling$bugs)),
         col = rainbow(2),
         ylim = c(0, 1),
-        main = "Class Distribution over and under sampling")
+        main = "Bugs class distribution over and under sampling")
 
 # For the training data set
 # All but the last column
@@ -483,7 +482,7 @@ table(tem.dataCSV.train.both.SMOTE$bugs)
 barplot(prop.table(table(tem.dataCSV.train.both.SMOTE$bugs)),
         col = rainbow(2),
         ylim = c(0, 1),
-        main = "Class Distribution under + ovrer sampling and SMOTE")
+        main = "Bugs class distribution under + over sampling and SMOTE")
 
 dt <- rpart( bugs ~ .,
              data = tem.dataCSV.train.both.SMOTE,

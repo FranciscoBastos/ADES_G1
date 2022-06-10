@@ -191,7 +191,9 @@ tem.dataCSV.test[-ncol(tem.dataCSV.test)] =
 svm.model = svm(formula = bugs ~ .,
                 data = train.smote.both,
                 type = 'C-classification',
-                kernel = 'linear')
+                kernel = 'polynomial') # change to linear later
+
+plot(svm.model, train.smote.both, bugs ~ RFC)
 
 ############################# Predict and print the SVM ########################
 
@@ -200,7 +202,7 @@ svm.predict <- predict(svm.model, newdata = tem.dataCSV.test)
 svm.predict
 
 cm <- table(tem.dataCSV.test[, ncol(tem.dataCSV.test)], svm.predict)
-
+cm
 accuracy <- sum(diag(cm)) / sum(cm)
 accuracy # 0.5595152
 error.dt.test <- 1 - sum(diag(cm)) / sum(cm)
